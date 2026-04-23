@@ -177,7 +177,10 @@ async function init(){
 }
 
 async function api(p){const r=await fetch(SCRIPT_URL+'?'+new URLSearchParams(p));return r.json();}
-async function apiPost(body){const fd=new FormData();fd.append('data',JSON.stringify(body));await fetch(SCRIPT_URL,{method:'POST',mode:'no-cors',body:fd});return{success:true};}
+async function apiGet(params){
+  const r=await fetch(SCRIPT_URL+'?'+new URLSearchParams(params));
+  return r.json();
+}
 
 async function loadClasses(){const d=await api({action:'getClasses'});classes=d.classes||[];updateSelects();}
 async function loadStudents(){const d=await api({action:'getStudents'});students=d.students||[];}
@@ -291,7 +294,7 @@ async function setCell(sid,name,cls,date,type){
   if(next==='none')delete attendanceCache[date][sid];
   else attendanceCache[date][sid]=next;
   try{
-    await apiPost({action:'markAttendance',studentId:sid,name,class:cls,date,status:next});
+    await apiGet({action:'markAttendance',studentId:sid,name,cls,date,status:next});
     renderAttendTable();
   }catch(e){
     // rollback
@@ -378,7 +381,7 @@ function showProfile(sid){
 async function saveMakeupSlots(sid){
   const slots=[0,1,2,3,4].map(i=>document.getElementById('pf-slot-'+i).value.trim());
   const prevDeadline=document.getElementById('pf-prevdeadline').value.trim();
-  await apiPost({action:'editStudent',studentId:sid,makeupSlots:slots,prevMakeupDeadline:prevDeadline});
+  await apiGet({action:'editStudent',studentId:sid,makeupSlots:slots.join('|'),prevMakeupDeadline:prevDeadline});
   // 更新本地
   const s=students.find(x=>x.id===sid);
   if(s){s.makeupSlots=slots;s.prevMakeupDeadline=prevDeadline;}
@@ -387,7 +390,7 @@ async function saveMakeupSlots(sid){
 
 async function saveDeadlines(sid){
   const deadline=document.getElementById('pf-deadline').value.trim();
-  await apiPost({action:'editStudent',studentId:sid,makeupDeadline:deadline});
+  await apiGet({action:'editStudent',studentId:sid,makeupDeadline:deadline});
   const s=students.find(x=>x.id===sid);
   if(s)s.makeupDeadline=deadline;
   showToast('期限已儲存');
@@ -419,7 +422,7 @@ async function addClass(){
   const name=document.getElementById('newClassName').value.trim();
   const dr=document.getElementById('newClassDates').value.trim();
   if(!name){showToast('請填班級名稱');return;}
-  await apiPost({action:'addClass',name,dates:dr?dr.split(',').map(d=>d.trim()):[]});
+  await apiGet({action:'addClass',name,dates:dr||''});
   showToast('班級已新增');
   document.getElementById('newClassName').value='';document.getElementById('newClassDates').value='';
   await loadClasses();renderAdmin();renderClassGrid();
@@ -431,7 +434,7 @@ async function addStudent(){
   const emoji=document.getElementById('newStudentEmoji').value.trim()||'🎵';
   const ts=parseInt(document.getElementById('newStudentSessions').value)||10;
   if(!name||!cls){showToast('請填學生名稱和班級');return;}
-  await apiPost({action:'addStudent',name,class:cls,emoji,totalSessions:ts});
+  await apiGet({action:'addStudent',name,cls,emoji,totalSessions:ts});
   showToast(`${name} 已新增`);
   document.getElementById('newStudentName').value='';
   await loadStudents();renderAdmin();renderClassGrid();
@@ -440,7 +443,7 @@ async function addStudent(){
 
 async function deleteClass(id,name){
   if(!confirm(`確定刪除「${name}」？`))return;
-  await apiPost({action:'deleteClass',classId:id});
+  await apiGet({action:'deleteClass',classId:id});
   showToast('已刪除');
   if(selectedClass===id)selectedClass=null;
   await loadClasses();renderAdmin();renderClassGrid();
@@ -472,7 +475,11 @@ async function saveEdit(){
     makeupDeadline:document.getElementById('edt-deadline').value.trim()
   };
   closeModal();
-  await apiPost(data);showToast('已儲存');
+  await apiGet({action:'editStudent',studentId:data.studentId,
+    name:data.name,emoji:data.emoji,cls:data.class,
+    totalSessions:data.totalSessions,prevMakeup:data.prevMakeup,
+    prevMakeupDeadline:data.prevMakeupDeadline,makeupDeadline:data.makeupDeadline
+  });showToast('已儲存');
   await loadStudents();renderAdmin();
   if(selectedClass)renderAttendTable();
 }
@@ -481,7 +488,7 @@ async function deleteStudentFromModal(){
   const s=students.find(x=>x.id===editingId);
   if(!confirm(`確定刪除「${s?s.name:'此學生'}」？`))return;
   closeModal();
-  await apiPost({action:'deleteStudent',studentId:editingId});
+  await apiGet({action:'deleteStudent',studentId:editingId});
   showToast('已刪除');
   await loadStudents();renderAdmin();renderClassGrid();
   if(selectedClass)renderAttendTable();
