@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>好森 MT 出席系統</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--green:#2d5a3d;--green-mid:#4a7c59;--green-light:#eaf4ee;--red:#c0392b;--red-light:#fdecea;--amber:#e67e22;--amber-light:#fef5e7;--gray:#f7f6f3;--border:#e0ddd6;--text:#1a1a1a;--muted:#888;--radius:12px}
+body{font-family:'Helvetica Neue','PingFang TC','Microsoft JhengHei',sans-serif;background:var(--gray);color:var(--text);min-height:100vh}
+.header{background:var(--green);color:white;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.header-title{font-size:15px;font-weight:600}
+.header-sub{font-size:11px;opacity:0.6;margin-top:1px}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:#aaa;display:inline-block;margin-right:5px}
+.sync-dot.ok{background:#6fcf97}.sync-dot.loading{background:#f2c94c;animation:pulse 1s infinite}.sync-dot.error{background:#eb5757}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.tabs{display:flex;background:white;border-bottom:1px solid var(--border);overflow-x:auto}
+.tab{flex-shrink:0;padding:11px 14px;font-size:13px;cursor:pointer;border:none;background:none;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap}
+.tab.active{color:var(--green);border-bottom-color:var(--green);font-weight:500}
+.main{padding:12px;max-width:1400px;margin:0 auto}
+.class-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:14px}
+.class-card{background:white;border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;cursor:pointer;transition:all 0.15s}
+.class-card:hover{border-color:var(--green);background:var(--green-light)}
+.class-card.active{border-color:var(--green);background:var(--green);color:white}
+.class-card-name{font-size:14px;font-weight:500}
+.class-card-count{font-size:12px;opacity:0.7;margin-top:2px}
+.attend-table-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border);background:white;margin-bottom:12px}
+table.at{border-collapse:collapse;font-size:12px;min-width:100%}
+table.at th{background:var(--green);color:white;padding:8px 5px;white-space:nowrap;text-align:center;font-weight:500;position:sticky;top:0;z-index:10}
+table.at th.sc{text-align:left;position:sticky;left:0;z-index:20;background:var(--green);min-width:90px;padding-left:10px}
+table.at td{padding:4px 3px;border-bottom:1px solid #f0ede8;border-right:1px solid #f8f6f3;text-align:center;vertical-align:middle}
+table.at td.sc{text-align:left;position:sticky;left:0;background:white;z-index:5;border-right:1px solid var(--border);padding:5px 8px 5px 10px;min-width:90px}
+table.at tr:hover td{background:#fafaf8}
+table.at tr:hover td.sc{background:#fafaf8}
+table.at th.tc{background:#1a4a2a}
+table.at td.tc{background:#f0faf4}
+.sname{font-size:13px;font-weight:500}
+.smeta{font-size:10px;color:var(--muted);margin-top:1px}
+.cb{display:inline-flex;align-items:center;justify-content:center;width:36px;height:28px;border-radius:6px;border:1px solid #ddd;background:white;cursor:pointer;font-size:12px;font-weight:700;transition:all 0.1s;user-select:none;-webkit-user-select:none}
+.cb:active{transform:scale(0.9)}
+.cb.present{background:#d4edda;border-color:#70aa80;color:#155724}
+.cb.absent{background:#fff3cd;border-color:#f0c040;color:#856404}
+.cb.truant{background:#f8d7da;border-color:#e0a0a0;color:#721c24}
+.cb.none{color:#ccc}
+.cb.saving{opacity:0.4;pointer-events:none}
+.ic{font-size:11px;color:var(--muted);padding:4px 2px}
+.rok{color:var(--green);font-weight:600}
+.rwarn{color:var(--amber);font-weight:600}
+.rdanger{color:var(--red);font-weight:600}
+.legend{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;font-size:12px;color:var(--muted);align-items:center}
+.legend-item{display:flex;align-items:center;gap:5px}
+.search-bar{display:flex;gap:8px;margin-bottom:12px}
+.search-bar input{flex:1;padding:9px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px}
+.profile{background:white;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:10px}
+.phdr{background:var(--green-light);padding:14px 16px;display:flex;align-items:center;gap:12px}
+.pname{font-size:18px;font-weight:600;color:var(--green)}
+.pcls{font-size:13px;color:var(--muted);margin-top:2px}
+.pstats{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--border)}
+.pstat{background:white;padding:12px;text-align:center}
+.pstat-val{font-size:20px;font-weight:600}
+.pstat-lbl{font-size:11px;color:var(--muted);margin-top:2px}
+.tlrow{display:flex;align-items:center;gap:8px;padding:7px 16px;border-bottom:1px solid #f5f5f5;font-size:13px}
+.tlrow:last-child{border-bottom:none}
+.tldate{min-width:50px;color:var(--muted);font-size:12px}
+.tlst{padding:2px 10px;border-radius:99px;font-size:12px;font-weight:500}
+.tsp{background:var(--green-light);color:var(--green)}
+.tsa{background:#fff3cd;color:#856404}
+.tst{background:var(--red-light);color:var(--red)}
+.suggest-list{background:white;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.suggest-item{padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:10px;font-size:14px}
+.suggest-item:last-child{border-bottom:none}
+.suggest-item:hover{background:var(--green-light)}
+.card{background:white;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:10px;overflow:hidden}
+.card-body{padding:14px}
+.form-row{display:flex;gap:8px;margin-bottom:8px;align-items:center}
+.form-row label{font-size:13px;color:var(--muted);min-width:70px}
+.form-row input,.form-row select{flex:1;font-size:13px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:white}
+.btn{padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:500;border:1px solid}
+.btn-green{background:var(--green);color:white;border-color:var(--green)}
+.btn-red{background:var(--red-light);color:var(--red);border-color:#e0a0a0}
+.btn-row{display:flex;gap:8px;margin-top:10px}
+.section-label{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;margin:16px 0 8px}
+.srow{display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);gap:10px}
+.srow:last-child{border-bottom:none}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:white;border-radius:var(--radius);width:100%;max-width:420px;overflow:hidden}
+.modal-hdr{background:var(--green);color:white;padding:12px 16px;font-size:15px;font-weight:600}
+.modal-body{padding:16px}
+.modal-footer{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border);justify-content:space-between}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:white;padding:10px 20px;border-radius:99px;font-size:13px;z-index:999;opacity:0;transition:opacity 0.2s;pointer-events:none}
+.toast.show{opacity:1}
+.empty{text-align:center;padding:30px 20px;color:var(--muted);font-size:14px}
+.lmask{text-align:center;padding:30px;color:var(--muted);font-size:14px}
+</style>
+</head>
+<body>
+<script>
+const SCRIPT_URL='https://script.google.com/macros/s/AKfycbwTl_pEaFQb-0UuATusXi_utWNAcR4cRE8Hu-WMUv-59PQxJXTXPIXvZsCOEzT_SQE/exec';
+</script>
+<div class="header">
+  <div><div class="header-title">🌿 好森 MT 出席系統</div><div class="header-sub">Music Together 春季 2026</div></div>
+  <div style="font-size:12px;color:rgba(255,255,255,0.75);display:flex;align-items:center"><span class="sync-dot" id="syncDot"></span><span id="syncLabel">連線中…</span></div>
+</div>
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('attend',this)">📋 出席登記</button>
+  <button class="tab" onclick="switchTab('lookup',this)">🔍 學生查詢</button>
+  <button class="tab" onclick="switchTab('admin',this)">⚙️ 管理</button>
+</div>
+<div class="main">
+  <div id="tab-attend">
+    <div class="legend">
+      <span class="legend-item"><span class="cb present" style="pointer-events:none">✓</span>出席（扣1堂）</span>
+      <span class="legend-item"><span class="cb absent" style="pointer-events:none">假</span>請假（不扣堂，可補）</span>
+      <span class="legend-item"><span class="cb truant" style="pointer-events:none">缺</span>缺課（扣1堂）</span>
+    </div>
+    <div id="classGrid" class="class-grid"></div>
+    <div id="attendTable"></div>
+  </div>
+  <div id="tab-lookup" style="display:none">
+    <div class="search-bar"><input type="text" id="lookupInput" placeholder="輸入學生暱稱搜尋…" oninput="renderLookup()" autocomplete="off"></div>
+    <div id="lookupContent"><div class="empty">輸入學生名字開始查詢</div></div>
+  </div>
+  <div id="tab-admin" style="display:none">
+    <div class="section-label">新增班級</div>
+    <div class="card"><div class="card-body">
+      <div class="form-row"><label>班級名稱</label><input id="newClassName" placeholder="例：六 9:00 MT"></div>
+      <div class="form-row"><label>上課日期</label><input id="newClassDates" placeholder="2026/03/07,2026/03/14…"></div>
+      <div class="btn-row"><button class="btn btn-green" onclick="addClass()">＋ 新增班級</button></div>
+    </div></div>
+    <div class="section-label">新增學生</div>
+    <div class="card"><div class="card-body">
+      <div class="form-row"><label>班級</label><select id="newStudentClass"><option value="">選擇班級</option></select></div>
+      <div class="form-row"><label>暱稱</label><input id="newStudentName" placeholder="例：暘暘"></div>
+      <div class="form-row"><label>Emoji</label><input id="newStudentEmoji" placeholder="🎵" style="max-width:80px"></div>
+      <div class="form-row"><label>購買堂數</label><input id="newStudentSessions" type="number" value="10" style="max-width:80px"></div>
+      <div class="btn-row"><button class="btn btn-green" onclick="addStudent()">＋ 新增學生</button></div>
+    </div></div>
+    <div class="section-label">班級列表</div>
+    <div class="card" id="classList"><div class="lmask">載入中…</div></div>
+    <div class="section-label">學生列表</div>
+    <div class="card" id="studentList"><div class="lmask">載入中…</div></div>
+  </div>
+</div>
+<div class="modal-bg" id="editModal" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-hdr">✏️ 編輯學生資料</div>
+    <div class="modal-body">
+      <div class="form-row"><label>暱稱</label><input id="edt-name"></div>
+      <div class="form-row"><label>Emoji</label><input id="edt-emoji" style="max-width:80px"></div>
+      <div class="form-row"><label>班級</label><select id="edt-class"></select></div>
+      <div class="form-row"><label>購買堂數</label><input id="edt-sessions" type="number" style="max-width:80px"></div>
+      <div class="form-row"><label>上季補課</label><input id="edt-prevmakeup" type="number" placeholder="0" style="max-width:80px"></div>
+      <div class="form-row"><label>上季期限</label><input id="edt-prevdeadline" placeholder="2026/06/30" style="max-width:130px"></div>
+      <div class="form-row"><label>本季期限</label><input id="edt-deadline" placeholder="2026/08/31" style="max-width:130px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-red" onclick="deleteStudentFromModal()">🗑 刪除</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn" style="border-color:var(--border)" onclick="closeModal()">取消</button>
+        <button class="btn btn-green" onclick="saveEdit()">儲存</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+let classes=[],students=[],attendanceCache={},selectedClass=null;
+
+async function init(){
+  setSyncStatus('loading','連線中…');
+  try{
+    await Promise.all([loadClasses(),loadStudents()]);
+    await loadAllAttendance();
+    renderClassGrid();
+    setSyncStatus('ok','已連線');
+  }catch(e){setSyncStatus('error','連線失敗');showToast('連線失敗');}
+}
+
+async function api(p){const r=await fetch(SCRIPT_URL+'?'+new URLSearchParams(p));return r.json();}
+async function apiPost(body){const fd=new FormData();fd.append('data',JSON.stringify(body));await fetch(SCRIPT_URL,{method:'POST',mode:'no-cors',body:fd});return{success:true};}
+
+async function loadClasses(){const d=await api({action:'getClasses'});classes=d.classes||[];updateSelects();}
+async function loadStudents(){const d=await api({action:'getStudents'});students=d.students||[];}
+async function loadAllAttendance(){
+  const d=await api({action:'getAllAttendance'});
+  attendanceCache={};
+  (d.records||[]).forEach(r=>{if(!attendanceCache[r.date])attendanceCache[r.date]={};attendanceCache[r.date][r.studentId]=r.status;});
+}
+
+function calc(s){
+  let present=0,absent=0,truant=0,makeup=0;
+  Object.values(attendanceCache).forEach(dr=>{
+    const st=dr[s.id];
+    if(st==='present')present++;
+    else if(st==='absent')absent++;
+    else if(st==='truant')truant++;
+    else if(st==='makeup'){makeup++;present++;}
+  });
+  const prevMakeup=s.prevMakeup||0;
+  const used=present+truant;
+  const pendingMakeup=Math.max(0,(absent-makeup)+prevMakeup);
+  return{present,absent,truant,makeup,pendingMakeup,used,remain:Math.max(0,s.totalSessions-used)};
+}
+
+function todayStr(){const d=new Date();return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;}
+function fmt(s){const p=s.split('/');return p.length===3?`${parseInt(p[1])}/${parseInt(p[2])}`:s;}
+function isFuture(d){return d>todayStr();}
+
+function renderClassGrid(){
+  const el=document.getElementById('classGrid');
+  if(!classes.length){el.innerHTML='<div class="empty">尚未建立班級</div>';return;}
+  el.innerHTML=classes.map(c=>`
+    <div class="class-card${selectedClass===c.id?' active':''}" onclick="selectClass('${c.id}')">
+      <div class="class-card-name">${c.name}</div>
+      <div class="class-card-count">${students.filter(s=>s.class===c.name).length} 位學生</div>
+    </div>`).join('');
+  if(selectedClass)renderAttendTable();
+  else document.getElementById('attendTable').innerHTML='';
+}
+
+function selectClass(cid){selectedClass=cid;renderClassGrid();}
+
+function renderAttendTable(){
+  const el=document.getElementById('attendTable');
+  const co=classes.find(c=>c.id===selectedClass);
+  if(!co){el.innerHTML='';return;}
+  const cs=students.filter(s=>s.class===co.name);
+  const dates=co.dates;
+  const today=todayStr();
+  if(!cs.length){el.innerHTML='<div class="empty" style="background:white;border-radius:12px;border:1px solid var(--border);padding:30px">這個班級還沒有學生</div>';return;}
+  let html=`<div class="attend-table-wrap"><table class="at"><thead><tr>
+    <th class="sc">學生</th>
+    ${dates.map(d=>`<th class="${d===today?'tc':''}" style="min-width:40px">${fmt(d)}</th>`).join('')}
+    <th style="min-width:36px">出席</th><th style="min-width:36px">請假</th><th style="min-width:36px">缺課</th><th style="min-width:36px">待補</th><th style="min-width:40px">剩餘</th>
+  </tr></thead><tbody>`;
+  cs.forEach(s=>{
+    const c=calc(s);
+    const rc=c.remain===0?'rdanger':c.remain<=2?'rwarn':'rok';
+    html+=`<tr><td class="sc"><div class="sname">${s.emoji} ${s.name}</div><div class="smeta">購${s.totalSessions}堂</div></td>
+    ${dates.map(d=>{
+      const st=(attendanceCache[d]||{})[s.id]||'none';
+      if(isFuture(d))return`<td class="${d===today?'tc':''}"><span class="cb none" style="opacity:0.2;pointer-events:none">·</span></td>`;
+      const label=st==='present'?'✓':st==='absent'?'假':st==='truant'?'缺':'·';
+      return`<td class="${d===today?'tc':''}"><span class="cb ${st}" onclick="cycleCell('${s.id}','${s.name}','${s.class}','${d}',this)">${label}</span></td>`;
+    }).join('')}
+    <td class="ic">${c.present}</td>
+    <td class="ic">${c.absent}</td>
+    <td class="ic">${c.truant}</td>
+    <td class="ic">${c.pendingMakeup>0?`<span style="color:var(--amber);font-weight:600">${c.pendingMakeup}</span>`:'0'}</td>
+    <td class="ic"><span class="${rc}">${c.remain}</span></td>
+    </tr>`;
+  });
+  html+='</tbody></table></div>';
+  el.innerHTML=html;
+}
+
+async function cycleCell(sid,name,cls,date,el){
+  const cur=el.className.split(' ').find(c=>['present','absent','truant','none'].includes(c))||'none';
+  const cycle={none:'present',present:'absent',absent:'truant',truant:'none'};
+  const next=cycle[cur]||'none';
+  const label=next==='present'?'✓':next==='absent'?'假':next==='truant'?'缺':'·';
+  el.className='cb saving';
+  if(!attendanceCache[date])attendanceCache[date]={};
+  if(next==='none')delete attendanceCache[date][sid];
+  else attendanceCache[date][sid]=next;
+  try{
+    await apiPost({action:'markAttendance',studentId:sid,name,class:cls,date,status:next});
+    el.className='cb '+next;
+    el.textContent=label;
+    renderAttendTable();
+  }catch(e){showToast('儲存失敗');el.className='cb '+cur;}
+}
+
+function renderLookup(){
+  const q=document.getElementById('lookupInput').value.trim().toLowerCase();
+  const el=document.getElementById('lookupContent');
+  if(!q){el.innerHTML='<div class="empty">輸入學生名字開始查詢</div>';return;}
+  const matched=students.filter(s=>s.name.toLowerCase().includes(q));
+  if(!matched.length){el.innerHTML='<div class="empty">查無此學生</div>';return;}
+  if(matched.length>1){
+    el.innerHTML=`<div class="suggest-list">${matched.map(s=>`<div class="suggest-item" onclick="showProfile('${s.id}')"><span style="font-size:18px">${s.emoji}</span><div><div style="font-weight:500">${s.name}</div><div style="font-size:12px;color:var(--muted)">${s.class}</div></div></div>`).join('')}</div>`;
+  }else{showProfile(matched[0].id);}
+}
+
+function showProfile(sid){
+  const s=students.find(x=>x.id===sid);if(!s)return;
+  const c=calc(s);
+  const co=classes.find(cl=>cl.name===s.class);
+  const dates=co?co.dates:[];
+  const rc=c.remain===0?'#c0392b':c.remain<=2?'#e67e22':'#2d5a3d';
+
+  // 上季補課格子（最多5格）
+  const makeupSlots=s.makeupSlots||['','','','',''];
+  const makeupSlotsHTML=`
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+        <span style="font-size:12px;font-weight:600;color:var(--muted)">上季補課期限</span>
+        <input id="pf-prevdeadline" value="${s.prevMakeupDeadline||''}" placeholder="2026/06/30"
+          style="padding:4px 9px;border:1px solid var(--border);border-radius:6px;font-size:12px;width:110px">
+        <span style="font-size:11px;color:var(--muted)">（上季補課堂數：${s.prevMakeup||0} 堂）</span>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${[0,1,2,3,4].map(i=>`
+          <div style="text-align:center">
+            <div style="font-size:10px;color:var(--muted);margin-bottom:3px">補${i+1}</div>
+            <input id="pf-slot-${i}" value="${makeupSlots[i]||''}" placeholder="日期"
+              style="width:72px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:center">
+          </div>`).join('')}
+      </div>
+      <div style="margin-top:10px">
+        <button onclick="saveMakeupSlots('${s.id}')" class="btn btn-green" style="font-size:12px;padding:5px 14px">儲存補課記錄</button>
+      </div>
+    </div>`;
+
+  // 本季出席記錄
+  const tlHTML=dates.map(d=>{
+    const st=(attendanceCache[d]||{})[s.id];
+    if(!st&&isFuture(d))return'';
+    const label=st==='present'?'出席':st==='absent'?'請假':st==='truant'?'缺課':st==='makeup'?'補課':'未登記';
+    const cls2=st==='present'?'tsp':st==='absent'?'tsa':(st==='truant'||st==='makeup')?'tst':'';
+    return`<div class="tlrow"><span class="tldate">${fmt(d)}</span><span class="tlst ${cls2}">${label}</span></div>`;
+  }).join('');
+
+  document.getElementById('lookupContent').innerHTML=`<div class="profile">
+    <div class="phdr"><span style="font-size:28px">${s.emoji}</span><div><div class="pname">${s.name}</div><div class="pcls">${s.class}</div></div></div>
+    <div class="pstats">
+      <div class="pstat"><div class="pstat-val" style="color:#2d5a3d">${c.present}</div><div class="pstat-lbl">出席</div></div>
+      <div class="pstat"><div class="pstat-val" style="color:#856404">${c.absent}</div><div class="pstat-lbl">請假</div></div>
+      <div class="pstat"><div class="pstat-val" style="color:#c0392b">${c.truant}</div><div class="pstat-lbl">缺課</div></div>
+      <div class="pstat"><div class="pstat-val" style="color:${c.pendingMakeup>0?'#e67e22':'#2d5a3d'}">${c.pendingMakeup}</div><div class="pstat-lbl">待補課</div></div>
+      <div class="pstat"><div class="pstat-val" style="color:${rc}">${c.remain}</div><div class="pstat-lbl">剩餘堂數</div></div>
+    </div>
+    ${makeupSlotsHTML}
+    <div style="padding:10px 16px;border-bottom:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px">本季出席記錄</div>
+      ${tlHTML||'<div style="color:var(--muted);font-size:13px">尚無記錄</div>'}
+    </div>
+    <div style="padding:12px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="font-size:12px;font-weight:600;color:var(--muted)">本季補課期限</span>
+      <input id="pf-deadline" value="${s.makeupDeadline||''}" placeholder="2026/08/31"
+        style="padding:4px 9px;border:1px solid var(--border);border-radius:6px;font-size:12px;width:110px">
+      <button onclick="saveDeadlines('${s.id}')" class="btn btn-green" style="font-size:12px;padding:5px 14px">儲存期限</button>
+    </div>
+  </div>`;
+}
+
+async function saveMakeupSlots(sid){
+  const slots=[0,1,2,3,4].map(i=>document.getElementById('pf-slot-'+i).value.trim());
+  const prevDeadline=document.getElementById('pf-prevdeadline').value.trim();
+  await apiPost({action:'editStudent',studentId:sid,makeupSlots:slots,prevMakeupDeadline:prevDeadline});
+  // 更新本地
+  const s=students.find(x=>x.id===sid);
+  if(s){s.makeupSlots=slots;s.prevMakeupDeadline=prevDeadline;}
+  showToast('補課記錄已儲存');
+}
+
+async function saveDeadlines(sid){
+  const deadline=document.getElementById('pf-deadline').value.trim();
+  await apiPost({action:'editStudent',studentId:sid,makeupDeadline:deadline});
+  const s=students.find(x=>x.id===sid);
+  if(s)s.makeupDeadline=deadline;
+  showToast('期限已儲存');
+}
+
+function renderAdmin(){
+  const el=document.getElementById('classList');
+  if(!classes.length){el.innerHTML='<div class="empty">尚未建立班級</div>';return;}
+  el.innerHTML=classes.map(c=>`<div class="srow">
+    <div style="flex:1"><div style="font-size:14px;font-weight:500">${c.name}</div><div style="font-size:11px;color:var(--muted)">${c.dates.length} 堂・${c.dates[0]||'未設日期'} 起</div></div>
+    <button class="btn btn-red" style="font-size:11px;padding:4px 10px" onclick="deleteClass('${c.id}','${c.name}')">刪除</button>
+  </div>`).join('');
+  const sl=document.getElementById('studentList');
+  if(!students.length){sl.innerHTML='<div class="empty">尚未有學生</div>';return;}
+  const sorted=[...students].sort((a,b)=>a.class.localeCompare(b.class,'zh')||a.name.localeCompare(b.name,'zh'));
+  sl.innerHTML=sorted.map(s=>{
+    const c=calc(s);
+    const rc=c.remain===0?'rdanger':c.remain<=2?'rwarn':'rok';
+    return`<div class="srow">
+      <span style="font-size:18px">${s.emoji}</span>
+      <div style="flex:1"><div style="font-size:14px;font-weight:500">${s.name}</div>
+      <div style="font-size:11px;color:var(--muted)">${s.class}・購買${s.totalSessions}堂・<span class="${rc}">剩${c.remain}堂</span>${c.pendingMakeup>0?` · 待補${c.pendingMakeup}`:''}</div></div>
+      <button class="btn" style="font-size:11px;padding:4px 10px;border-color:var(--border)" onclick="openEdit('${s.id}')">編輯</button>
+    </div>`;
+  }).join('');
+}
+
+async function addClass(){
+  const name=document.getElementById('newClassName').value.trim();
+  const dr=document.getElementById('newClassDates').value.trim();
+  if(!name){showToast('請填班級名稱');return;}
+  await apiPost({action:'addClass',name,dates:dr?dr.split(',').map(d=>d.trim()):[]});
+  showToast('班級已新增');
+  document.getElementById('newClassName').value='';document.getElementById('newClassDates').value='';
+  await loadClasses();renderAdmin();renderClassGrid();
+}
+
+async function addStudent(){
+  const name=document.getElementById('newStudentName').value.trim();
+  const cls=document.getElementById('newStudentClass').value;
+  const emoji=document.getElementById('newStudentEmoji').value.trim()||'🎵';
+  const ts=parseInt(document.getElementById('newStudentSessions').value)||10;
+  if(!name||!cls){showToast('請填學生名稱和班級');return;}
+  await apiPost({action:'addStudent',name,class:cls,emoji,totalSessions:ts});
+  showToast(`${name} 已新增`);
+  document.getElementById('newStudentName').value='';
+  await loadStudents();renderAdmin();renderClassGrid();
+  if(selectedClass)renderAttendTable();
+}
+
+async function deleteClass(id,name){
+  if(!confirm(`確定刪除「${name}」？`))return;
+  await apiPost({action:'deleteClass',classId:id});
+  showToast('已刪除');
+  if(selectedClass===id)selectedClass=null;
+  await loadClasses();renderAdmin();renderClassGrid();
+}
+
+let editingId=null;
+function openEdit(sid){
+  const s=students.find(x=>x.id===sid);if(!s)return;
+  editingId=sid;
+  document.getElementById('edt-name').value=s.name;
+  document.getElementById('edt-emoji').value=s.emoji;
+  document.getElementById('edt-class').value=s.class;
+  document.getElementById('edt-sessions').value=s.totalSessions;
+  document.getElementById('edt-prevmakeup').value=s.prevMakeup||0;
+  document.getElementById('edt-prevdeadline').value=s.prevMakeupDeadline||'';
+  document.getElementById('edt-deadline').value=s.makeupDeadline||'';
+  document.getElementById('editModal').style.display='flex';
+}
+function closeModal(){document.getElementById('editModal').style.display='none';editingId=null;}
+async function saveEdit(){
+  if(!editingId)return;
+  const data={action:'editStudent',studentId:editingId,
+    name:document.getElementById('edt-name').value.trim(),
+    emoji:document.getElementById('edt-emoji').value.trim()||'🎵',
+    class:document.getElementById('edt-class').value,
+    totalSessions:parseInt(document.getElementById('edt-sessions').value)||0,
+    prevMakeup:parseInt(document.getElementById('edt-prevmakeup').value)||0,
+    prevMakeupDeadline:document.getElementById('edt-prevdeadline').value.trim(),
+    makeupDeadline:document.getElementById('edt-deadline').value.trim()
+  };
+  closeModal();
+  await apiPost(data);showToast('已儲存');
+  await loadStudents();renderAdmin();
+  if(selectedClass)renderAttendTable();
+}
+async function deleteStudentFromModal(){
+  if(!editingId)return;
+  const s=students.find(x=>x.id===editingId);
+  if(!confirm(`確定刪除「${s?s.name:'此學生'}」？`))return;
+  closeModal();
+  await apiPost({action:'deleteStudent',studentId:editingId});
+  showToast('已刪除');
+  await loadStudents();renderAdmin();renderClassGrid();
+  if(selectedClass)renderAttendTable();
+}
+
+function updateSelects(){
+  const opts='<option value="">選擇班級</option>'+classes.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
+  ['newStudentClass','edt-class'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=opts;});
+}
+function switchTab(tab,btn){
+  ['attend','lookup','admin'].forEach(t=>document.getElementById('tab-'+t).style.display=t===tab?'':'none');
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  if(tab==='admin')renderAdmin();
+}
+function setSyncStatus(s,l){document.getElementById('syncDot').className='sync-dot '+s;document.getElementById('syncLabel').textContent=l;}
+function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2000);}
+init();
+</script>
+</body>
+</html>
