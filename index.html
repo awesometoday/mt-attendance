@@ -112,6 +112,7 @@ const SCRIPT_URL='https://script.google.com/macros/s/AKfycbwTl_pEaFQb-0UuATusXi_
       <span class="legend-item"><span class="cb present" style="pointer-events:none">✓</span>出席（扣1堂）</span>
       <span class="legend-item"><span class="cb absent" style="pointer-events:none">假</span>請假（不扣堂，可補）</span>
       <span class="legend-item"><span class="cb truant" style="pointer-events:none">缺</span>缺課（扣1堂）</span>
+      <span class="legend-item"><span class="cb" style="pointer-events:none;border-color:#2980b9;background:#2980b933;color:#2980b9">補</span>上季補課（不扣本季）</span>
     </div>
     <div id="classGrid" class="class-grid"></div>
     <div id="attendTable"></div>
@@ -191,18 +192,19 @@ async function loadAllAttendance(){
 }
 
 function calc(s){
-  let present=0,absent=0,truant=0,makeup=0;
+  let present=0,absent=0,truant=0,makeup=0,prevmakeup=0;
   Object.values(attendanceCache).forEach(dr=>{
     const st=dr[s.id];
     if(st==='present')present++;
     else if(st==='absent')absent++;
     else if(st==='truant')truant++;
     else if(st==='makeup'){makeup++;present++;}
+    else if(st==='prevmakeup')prevmakeup++; // 上季補課，不扣本季
   });
-  const prevMakeup=s.prevMakeup||0;
-  const used=present+truant;
-  const pendingMakeup=Math.max(0,(absent-makeup)+prevMakeup);
-  return{present,absent,truant,makeup,pendingMakeup,used,remain:Math.max(0,s.totalSessions-used)};
+  const prev=s.prevMakeup||0;
+  const used=present+truant; // 上季補課不算本季
+  const pendingMakeup=Math.max(0,(absent-makeup)+prev);
+  return{present,absent,truant,makeup,prevmakeup,pendingMakeup,used,remain:Math.max(0,s.totalSessions-used)};
 }
 
 function todayStr(){const d=new Date();return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;}
@@ -234,12 +236,13 @@ function renderAttendTable(){
 
   let html=`<div class="attend-table-wrap"><table class="at"><thead><tr>
     <th class="sc">學生</th>
-    ${dates.map(d=>`<th class="${d===today?'tc':''}" style="min-width:88px">
+    ${dates.map(d=>`<th class="${d===today?'tc':''}" style="min-width:116px">
       <div>${fmt(d)}</div>
       <div style="display:flex;justify-content:center;gap:4px;margin-top:4px;font-size:9px;opacity:0.8">
         <span style="width:26px;text-align:center">出</span>
         <span style="width:26px;text-align:center">假</span>
         <span style="width:26px;text-align:center">缺</span>
+        <span style="width:26px;text-align:center">補</span>
       </div>
     </th>`).join('')}
     <th style="min-width:36px">出席</th>
@@ -273,6 +276,7 @@ function renderAttendTable(){
             ${btn('present','#2d8a4e')}
             ${btn('absent','#b8860b')}
             ${btn('truant','#c0392b')}
+            ${btn('prevmakeup','#2980b9')}
           </div>
         </td>`;
       }).join('')}
