@@ -422,13 +422,20 @@ function renderAdmin(){
   const classOrder=['三 11:10 MT','四 9:50 MT','四 16:50 STEAM','四 18:10 鍵盤','五 9:50 MT','五 11:10 MT','六 9:00 MT','六 10:10 MT','六 11:20 MT','六 13:30 鍵盤','六 15:00 STEAM'];
   const clsIdx=c=>{ const i=classOrder.indexOf(c); return i>=0?i:99; };
   const sorted=[...students].sort((a,b)=>clsIdx(a.class)-clsIdx(b.class)||a.name.localeCompare(b.name,'zh'));
+  // 按班級分組加標題
+  let lastClass='';
   sl.innerHTML=sorted.map(s=>{
     const c=calc(s);
     const rc=c.remain===0?'rdanger':c.remain<=2?'rwarn':'rok';
-    return`<div class="srow">
+    let header='';
+    if(s.class!==lastClass){
+      lastClass=s.class;
+      header=`<div style="background:#f0f0ec;padding:6px 14px;font-size:11px;font-weight:700;color:#666;letter-spacing:0.05em;border-bottom:1px solid var(--border)">${s.class}</div>`;
+    }
+    return header+`<div class="srow">
       <span style="font-size:18px">${s.emoji}</span>
       <div style="flex:1"><div style="font-size:14px;font-weight:500">${s.name}</div>
-      <div style="font-size:11px;color:var(--muted)">${s.class}・購買${s.totalSessions}堂・<span class="${rc}">剩${c.remain}堂</span>${c.pendingMakeup>0?` · 待補${c.pendingMakeup}`:''}</div></div>
+      <div style="font-size:11px;color:var(--muted)">購買${s.totalSessions}堂・<span class="${rc}">剩${c.remain}堂</span>${c.pendingMakeup>0?` · 待補${c.pendingMakeup}`:''}</div></div>
       <button class="btn" style="font-size:11px;padding:4px 10px;border-color:var(--border)" onclick="openEdit('${s.id}')">編輯</button>
     </div>`;
   }).join('');
