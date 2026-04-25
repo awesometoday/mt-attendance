@@ -177,9 +177,9 @@ async function init(){
   }catch(e){setSyncStatus('error','連線失敗');showToast('連線失敗');}
 }
 
-async function api(p){const r=await fetch(SCRIPT_URL+'?'+new URLSearchParams(p));return r.json();}
+async function api(p){const r=await fetch(SCRIPT_URL+'?'+new URLSearchParams({...p,_t:Date.now()}));return r.json();}
 async function apiGet(params){
-  const r=await fetch(SCRIPT_URL+'?'+new URLSearchParams(params));
+  const r=await fetch(SCRIPT_URL+'?'+new URLSearchParams({...params,_t:Date.now()}));
   return r.json();
 }
 
@@ -320,8 +320,12 @@ function renderLookup(){
   }else{showProfile(matched[0].id);}
 }
 
-function showProfile(sid){
+async function showProfile(sid){
   const s=students.find(x=>x.id===sid);if(!s)return;
+  // 先顯示載入中
+  document.getElementById('lookupContent').innerHTML='<div class="lmask">載入中…</div>';
+  // 重新 fetch 最新出席記錄
+  await loadAllAttendance();
   const c=calc(s);
   const co=classes.find(cl=>cl.name===s.class);
   const dates=co?co.dates:[];
@@ -507,6 +511,7 @@ function switchTab(tab,btn){
   document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   if(tab==='admin')renderAdmin();
+  if(tab==='attend'){loadAllAttendance().then(()=>{if(selectedClass)renderAttendTable();});}
 }
 function setSyncStatus(s,l){document.getElementById('syncDot').className='sync-dot '+s;document.getElementById('syncLabel').textContent=l;}
 function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2000);}
