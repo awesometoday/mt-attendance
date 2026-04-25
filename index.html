@@ -419,7 +419,9 @@ function renderAdmin(){
   </div>`).join('');
   const sl=document.getElementById('studentList');
   if(!students.length){sl.innerHTML='<div class="empty">尚未有學生</div>';return;}
-  const sorted=[...students].sort((a,b)=>a.class.localeCompare(b.class,'zh')||a.name.localeCompare(b.name,'zh'));
+  const classOrder=['三 11:10 MT','四 9:50 MT','四 16:50 STEAM','四 18:10 鍵盤','五 9:50 MT','五 11:10 MT','六 9:00 MT','六 10:10 MT','六 11:20 MT','六 13:30 鍵盤','六 15:00 STEAM'];
+  const clsIdx=c=>{ const i=classOrder.indexOf(c); return i>=0?i:99; };
+  const sorted=[...students].sort((a,b)=>clsIdx(a.class)-clsIdx(b.class)||a.name.localeCompare(b.name,'zh'));
   sl.innerHTML=sorted.map(s=>{
     const c=calc(s);
     const rc=c.remain===0?'rdanger':c.remain<=2?'rwarn':'rok';
