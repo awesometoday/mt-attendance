@@ -433,7 +433,6 @@ function renderAdmin(){
       header=`<div style="background:#f0f0ec;padding:6px 14px;font-size:11px;font-weight:700;color:#666;letter-spacing:0.05em;border-bottom:1px solid var(--border)">${s.class}</div>`;
     }
     return header+`<div class="srow">
-      <span style="font-size:18px">${s.emoji}</span>
       <div style="flex:1"><div style="font-size:14px;font-weight:500">${s.name}</div>
       <div style="font-size:11px;color:var(--muted)">購買${s.totalSessions}堂・<span class="${rc}">剩${c.remain}堂</span>${c.pendingMakeup>0?` · 待補${c.pendingMakeup}`:''}</div></div>
       <button class="btn" style="font-size:11px;padding:4px 10px;border-color:var(--border)" onclick="openEdit('${s.id}')">編輯</button>
