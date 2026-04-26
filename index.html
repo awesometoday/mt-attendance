@@ -192,21 +192,24 @@ async function loadAllAttendance(){
 }
 
 function calc(s){
-  let present=0,absent=0,truant=0,makeup=0,prevmakeup=0;
+  let present=0,absent=0,truant=0,prevmakeup=0;
   Object.values(attendanceCache).forEach(dr=>{
     const st=dr[s.id];
     if(st==='present')present++;
     else if(st==='absent')absent++;
     else if(st==='truant')truant++;
-    else if(st==='makeup'){makeup++;present++;}
-    else if(st==='prevmakeup')prevmakeup++; // 上季補課，不扣本季
+    else if(st==='prevmakeup')prevmakeup++;
   });
   const prev=s.prevMakeup||0;
-  // 已補次數：從 makeupSlots 數非空格子
-  const madeupSlots=(s.makeupSlots||[]).filter(x=>x&&x.trim()).length;
+  // 上季已補：makeupSlots 非空格數
+  const prevMadeup=(s.makeupSlots||[]).filter(x=>x&&x.trim()).length;
+  // 本季已補：currentMakeupSlots 非空格數
+  const currMadeup=(s.currentMakeupSlots||[]).filter(x=>x&&x.trim()).length;
   const used=present+truant;
-  const pendingMakeup=Math.max(0,(absent-madeupSlots)+prev);
-  return{present,absent,truant,makeup:madeupSlots,prevmakeup,pendingMakeup,used,remain:Math.max(0,s.totalSessions-used)};
+  const prevPending=Math.max(0,prev-prevMadeup);
+  const currPending=Math.max(0,absent-currMadeup);
+  const pendingMakeup=prevPending+currPending;
+  return{present,absent,truant,prevmakeup,prevMadeup,currMadeup,prevPending,currPending,pendingMakeup,used,remain:Math.max(0,s.totalSessions-used)};
 }
 
 function todayStr(){const d=new Date();return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;}
@@ -270,9 +273,8 @@ function renderAttendTable(){
         const future=isFuture(d);
         const btn=(type,color)=>{
           const active=st===type;
-          const disabledForFuture=future&&type!=='absent';
-          const dis=disabledForFuture?'opacity:0.2;pointer-events:none;':'cursor:pointer;';
-          return`<div onclick="${disabledForFuture?'':` setCell('${s.id}','${s.name}','${s.class}','${d}','${type}')`}"
+          const dis=future?'opacity:0.2;pointer-events:none;':'cursor:pointer;';
+          return`<div onclick="${future?'':` setCell('${s.id}','${s.name}','${s.class}','${d}','${type}')`}"
             style="width:26px;height:26px;border-radius:50%;
             border:2px solid ${active?color:'#ddd'};
             background:${active?color+'33':'white'};
@@ -331,90 +333,100 @@ function renderLookup(){
 
 async function showProfile(sid){
   const s=students.find(x=>x.id===sid);if(!s)return;
-  // 先顯示載入中
   document.getElementById('lookupContent').innerHTML='<div class="lmask">載入中…</div>';
-  // 重新 fetch 最新出席記錄
   await loadAllAttendance();
   const c=calc(s);
   const co=classes.find(cl=>cl.name===s.class);
   const dates=co?co.dates:[];
   const rc=c.remain===0?'#c0392b':c.remain<=2?'#e67e22':'#2d5a3d';
+  const ss2='padding:16px;border-bottom:1px solid var(--border)';
+  const stitle=(t)=>`<div style="font-size:14px;font-weight:700;color:var(--green);margin-bottom:12px;letter-spacing:0.03em">${t}</div>`;
 
-  // 上季補課格子（最多5格）
+  // 上季補課記錄
   const makeupSlots=s.makeupSlots||['','','','',''];
-  const makeupSlotsHTML=`
-    <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
-        <span style="font-size:12px;font-weight:600;color:var(--muted)">上季補課期限</span>
-        <input id="pf-prevdeadline" value="${normalizeDate(s.prevMakeupDeadline)||''}" placeholder="2026/06/30"
-          style="padding:4px 9px;border:1px solid var(--border);border-radius:6px;font-size:12px;width:110px">
-        <span style="font-size:11px;color:var(--muted)">（上季補課堂數：${s.prevMakeup||0} 堂）</span>
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        ${[0,1,2,3,4].map(i=>`
-          <div style="text-align:center">
-            <div style="font-size:10px;color:var(--muted);margin-bottom:3px">補${i+1}</div>
-            <input id="pf-slot-${i}" value="${makeupSlots[i]||''}" placeholder="日期"
-              style="width:72px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:center">
-          </div>`).join('')}
-      </div>
-      <div style="margin-top:10px">
-        <button onclick="saveMakeupSlots('${s.id}')" class="btn btn-green" style="font-size:12px;padding:5px 14px">儲存補課記錄</button>
-      </div>
-    </div>`;
+  const prevSection=`<div style="${ss2}">
+    ${stitle('📌 上季補課記錄')}
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <span style="font-size:13px;color:var(--muted)">補課期限</span>
+      <input id="pf-prevdeadline" value="${normalizeDate(s.prevMakeupDeadline)||''}" placeholder="2026/06/30"
+        style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;width:120px">
+      <span style="font-size:12px;color:var(--muted)">（上季欠補：${s.prevMakeup||0} 堂）</span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      ${[0,1,2,3,4].map(i=>`<div style="text-align:center">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">補${i+1}</div>
+        <input id="pf-slot-${i}" value="${makeupSlots[i]||''}" placeholder="日期"
+          style="width:78px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:center">
+      </div>`).join('')}
+    </div>
+    <button onclick="saveMakeupSlots('${s.id}')" class="btn btn-green" style="font-size:13px;padding:6px 16px">儲存上季補課</button>
+  </div>`;
 
-  // 本季出席記錄（全部日期含未來，前面加週數）
+  // 本季補課記錄
+  const currSlots=s.currentMakeupSlots||['','','','',''];
+  const currSection=`<div style="${ss2}">
+    ${stitle('🗓 本季補課記錄')}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      ${[0,1,2,3,4].map(i=>`<div style="text-align:center">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">補${i+1}</div>
+        <input id="pf-curr-${i}" value="${currSlots[i]||''}" placeholder="日期"
+          style="width:78px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:center">
+      </div>`).join('')}
+    </div>
+    <button onclick="saveCurrentMakeupSlots('${s.id}')" class="btn btn-green" style="font-size:13px;padding:6px 16px">儲存本季補課</button>
+  </div>`;
+
+  // 本季出席記錄
   const tlHTML=dates.map((d,i)=>{
     const st=(attendanceCache[d]||{})[s.id];
     const future=isFuture(d);
-    const label=!st&&future?'－':
-      st==='present'?'出席':st==='absent'?'請假':st==='truant'?'缺課':
-      st==='makeup'?'補課':st==='prevmakeup'?'上季補課':'未登記';
-    const cls2=st==='present'?'tsp':st==='absent'?'tsa':(st==='truant'||st==='makeup')?'tst':'';
-    const wkStyle=future?'color:#bbb':'color:var(--muted)';
-    return`<div class="tlrow" style="${future?'opacity:0.5':''}">
-      <span style="font-size:10px;${wkStyle};width:28px;flex-shrink:0">W${i+1}</span>
-      <span class="tldate">${fmt(d)}</span>
-      <span class="tlst ${cls2}">${label}</span>
+    const label=!st&&future?'－':st==='present'?'出席':st==='absent'?'請假':st==='truant'?'缺課':st==='prevmakeup'?'上季補課':'未登記';
+    const badge=st==='present'?'background:#d4edda;color:#155724':st==='absent'?'background:#fff3cd;color:#856404':st==='truant'?'background:#f8d7da;color:#721c24':st==='prevmakeup'?'background:#dbeafe;color:#1e40af':'color:#bbb';
+    return`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f5f5f5;${future?'opacity:0.4':''}">
+      <span style="font-size:12px;color:#bbb;width:30px;flex-shrink:0">W${i+1}</span>
+      <span style="font-size:14px;color:var(--muted);min-width:52px">${fmt(d)}</span>
+      <span style="font-size:13px;font-weight:500;padding:3px 12px;border-radius:99px;${badge}">${label}</span>
     </div>`;
   }).join('');
 
-  // 計算說明
-  const calcNote=`<div style="font-size:11px;color:var(--muted);background:#f8f8f5;border-radius:8px;padding:10px 12px;margin-bottom:8px;line-height:1.8">
+  const calcNote=`<div style="font-size:12px;color:var(--muted);background:#f8f8f5;border-radius:8px;padding:10px 14px;margin-bottom:12px;line-height:2">
     <b>剩餘堂數</b> = 購買${s.totalSessions}堂 － 出席${c.present}次 － 缺課${c.truant}次 = <b>${c.remain}堂</b><br>
-    <b>待補課</b> = 上季未補${s.prevMakeup||0}堂 ＋ 本季請假${c.absent}次 － 已補${c.makeup}次 = <b>${c.pendingMakeup}堂</b>
+    <b>待補課</b> = 上季欠補${c.prevPending}堂 ＋ 本季請假未補${c.currPending}堂 = <b>${c.pendingMakeup}堂</b>
   </div>`;
 
-  // 備註欄
-  const notesHTML=`<div style="padding:12px 16px;border-bottom:1px solid var(--border)">
-    <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px">📝 備註</div>
+  const attendSection=`<div style="${ss2}">
+    ${stitle('📋 本季出席記錄')}
+    ${calcNote}
+    ${tlHTML||'<div style="color:var(--muted);font-size:13px">尚無記錄</div>'}
+  </div>`;
+
+  const notesSection=`<div style="${ss2}">
+    ${stitle('📝 備註')}
     <textarea id="pf-notes" rows="3" placeholder="手寫備註…（例：偶爾需要提醒、對鼓聲敏感…）"
       style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;resize:vertical;font-family:inherit;line-height:1.6">${s.notes||''}</textarea>
-    <button onclick="saveNotes('${s.id}')" class="btn btn-green" style="font-size:12px;padding:5px 14px;margin-top:8px">儲存備註</button>
+    <button onclick="saveNotes('${s.id}')" class="btn btn-green" style="font-size:13px;padding:6px 16px;margin-top:8px">儲存備註</button>
+  </div>`;
+
+  const deadlineSection=`<div style="padding:14px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <span style="font-size:13px;font-weight:600;color:var(--muted)">本季補課期限</span>
+    <input id="pf-deadline" value="${normalizeDate(s.makeupDeadline)||''}" placeholder="2026/08/31"
+      style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;width:120px">
+    <button onclick="saveDeadlines('${s.id}')" class="btn btn-green" style="font-size:13px;padding:6px 16px">儲存期限</button>
   </div>`;
 
   document.getElementById('lookupContent').innerHTML=`<div class="profile">
-    <div class="phdr"><span style="font-size:28px">${s.emoji}</span><div><div class="pname">${s.name}</div><div class="pcls">${s.class}</div></div></div>
+    <div class="phdr">
+      <span style="font-size:32px">${s.emoji}</span>
+      <div><div class="pname" style="font-size:20px">${s.name}</div><div class="pcls" style="font-size:14px">${s.class}</div></div>
+    </div>
     <div class="pstats">
-      <div class="pstat"><div class="pstat-val" style="color:#2d5a3d">${c.present}</div><div class="pstat-lbl">出席</div></div>
-      <div class="pstat"><div class="pstat-val" style="color:#856404">${c.absent}</div><div class="pstat-lbl">請假</div></div>
-      <div class="pstat"><div class="pstat-val" style="color:#c0392b">${c.truant}</div><div class="pstat-lbl">缺課</div></div>
-      <div class="pstat"><div class="pstat-val" style="color:${c.pendingMakeup>0?'#e67e22':'#2d5a3d'}">${c.pendingMakeup}</div><div class="pstat-lbl">待補課</div></div>
-      <div class="pstat"><div class="pstat-val" style="color:${rc}">${c.remain}</div><div class="pstat-lbl">剩餘堂數</div></div>
+      <div class="pstat"><div class="pstat-val" style="color:#2d5a3d;font-size:24px">${c.present}</div><div class="pstat-lbl" style="font-size:12px">出席</div></div>
+      <div class="pstat"><div class="pstat-val" style="color:#856404;font-size:24px">${c.absent}</div><div class="pstat-lbl" style="font-size:12px">請假</div></div>
+      <div class="pstat"><div class="pstat-val" style="color:#c0392b;font-size:24px">${c.truant}</div><div class="pstat-lbl" style="font-size:12px">缺課</div></div>
+      <div class="pstat"><div class="pstat-val" style="color:${c.pendingMakeup>0?'#e67e22':'#2d5a3d'};font-size:24px">${c.pendingMakeup}</div><div class="pstat-lbl" style="font-size:12px">待補課</div></div>
+      <div class="pstat"><div class="pstat-val" style="color:${rc};font-size:24px">${c.remain}</div><div class="pstat-lbl" style="font-size:12px">剩餘堂數</div></div>
     </div>
-    ${makeupSlotsHTML}
-    <div style="padding:10px 16px;border-bottom:1px solid var(--border)">
-      <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px">本季出席記錄</div>
-      ${calcNote}
-      ${tlHTML||'<div style="color:var(--muted);font-size:13px">尚無記錄</div>'}
-    </div>
-    ${notesHTML}
-    <div style="padding:12px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-      <span style="font-size:12px;font-weight:600;color:var(--muted)">本季補課期限</span>
-      <input id="pf-deadline" value="${normalizeDate(s.makeupDeadline)||''}" placeholder="2026/08/31"
-        style="padding:4px 9px;border:1px solid var(--border);border-radius:6px;font-size:12px;width:110px">
-      <button onclick="saveDeadlines('${s.id}')" class="btn btn-green" style="font-size:12px;padding:5px 14px">儲存期限</button>
-    </div>
+    ${prevSection}${currSection}${attendSection}${notesSection}${deadlineSection}
   </div>`;
 }
 
@@ -422,10 +434,17 @@ async function saveMakeupSlots(sid){
   const slots=[0,1,2,3,4].map(i=>document.getElementById('pf-slot-'+i).value.trim());
   const prevDeadline=document.getElementById('pf-prevdeadline').value.trim();
   await apiGet({action:'editStudent',studentId:sid,makeupSlots:slots.join('|'),prevMakeupDeadline:prevDeadline});
-  // 更新本地
   const s=students.find(x=>x.id===sid);
   if(s){s.makeupSlots=slots;s.prevMakeupDeadline=prevDeadline;}
-  showToast('補課記錄已儲存');
+  showToast('上季補課記錄已儲存');
+}
+
+async function saveCurrentMakeupSlots(sid){
+  const slots=[0,1,2,3,4].map(i=>document.getElementById('pf-curr-'+i).value.trim());
+  await apiGet({action:'editStudent',studentId:sid,currentMakeupSlots:slots.join('|')});
+  const s=students.find(x=>x.id===sid);
+  if(s)s.currentMakeupSlots=slots;
+  showToast('本季補課記錄已儲存');
 }
 
 async function saveNotes(sid){
