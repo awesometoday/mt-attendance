@@ -201,9 +201,7 @@ function calc(s){
     else if(st==='prevmakeup')prevmakeup++;
   });
   const prev=s.prevMakeup||0;
-  // 上季已補：makeupSlots 非空格數
   const prevMadeup=(s.makeupSlots||[]).filter(x=>x&&x.trim()).length;
-  // 本季已補：currentMakeupSlots 非空格數
   const currMadeup=(s.currentMakeupSlots||[]).filter(x=>x&&x.trim()).length;
   const used=present+truant;
   const prevPending=Math.max(0,prev-prevMadeup);
@@ -333,17 +331,20 @@ function renderLookup(){
 
 async function showProfile(sid){
   const s=students.find(x=>x.id===sid);if(!s)return;
+  // 先顯示載入中
   document.getElementById('lookupContent').innerHTML='<div class="lmask">載入中…</div>';
+  // 重新 fetch 最新出席記錄
   await loadAllAttendance();
   const c=calc(s);
   const co=classes.find(cl=>cl.name===s.class);
   const dates=co?co.dates:[];
   const rc=c.remain===0?'#c0392b':c.remain<=2?'#e67e22':'#2d5a3d';
-  const ss2='padding:16px;border-bottom:1px solid var(--border)';
-  const stitle=(t)=>`<div style="font-size:14px;font-weight:700;color:var(--green);margin-bottom:12px;letter-spacing:0.03em">${t}</div>`;
 
-  // 上季補課記錄
-  const makeupSlots=s.makeupSlots||['','','','',''];
+  // 上季補課記錄（10格）
+  const makeupSlots=(s.makeupSlots||[]).concat(['','','','','','','','','','']).slice(0,10);
+  const ss2='padding:16px;border-bottom:1px solid var(--border)';
+  const stitle=(t)=>`<div style="font-size:14px;font-weight:700;color:var(--green);margin-bottom:12px">${t}</div>`;
+
   const prevSection=`<div style="${ss2}">
     ${stitle('📌 上季補課記錄')}
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
@@ -352,25 +353,25 @@ async function showProfile(sid){
         style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;width:120px">
       <span style="font-size:12px;color:var(--muted)">（上季欠補：${s.prevMakeup||0} 堂）</span>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-      ${[0,1,2,3,4].map(i=>`<div style="text-align:center">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      ${[0,1,2,3,4,5,6,7,8,9].map(i=>`<div style="text-align:center">
         <div style="font-size:11px;color:var(--muted);margin-bottom:4px">補${i+1}</div>
         <input id="pf-slot-${i}" value="${makeupSlots[i]||''}" placeholder="日期"
-          style="width:78px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:center">
+          style="width:70px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:center">
       </div>`).join('')}
     </div>
     <button onclick="saveMakeupSlots('${s.id}')" class="btn btn-green" style="font-size:13px;padding:6px 16px">儲存上季補課</button>
   </div>`;
 
-  // 本季補課記錄
-  const currSlots=s.currentMakeupSlots||['','','','',''];
+  // 本季補課記錄（10格）
+  const currSlots=(s.currentMakeupSlots||[]).concat(['','','','','','','','','','']).slice(0,10);
   const currSection=`<div style="${ss2}">
     ${stitle('🗓 本季補課記錄')}
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-      ${[0,1,2,3,4].map(i=>`<div style="text-align:center">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      ${[0,1,2,3,4,5,6,7,8,9].map(i=>`<div style="text-align:center">
         <div style="font-size:11px;color:var(--muted);margin-bottom:4px">補${i+1}</div>
         <input id="pf-curr-${i}" value="${currSlots[i]||''}" placeholder="日期"
-          style="width:78px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:center">
+          style="width:70px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:center">
       </div>`).join('')}
     </div>
     <button onclick="saveCurrentMakeupSlots('${s.id}')" class="btn btn-green" style="font-size:13px;padding:6px 16px">儲存本季補課</button>
@@ -407,13 +408,6 @@ async function showProfile(sid){
     <button onclick="saveNotes('${s.id}')" class="btn btn-green" style="font-size:13px;padding:6px 16px;margin-top:8px">儲存備註</button>
   </div>`;
 
-  const deadlineSection=`<div style="padding:14px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-    <span style="font-size:13px;font-weight:600;color:var(--muted)">本季補課期限</span>
-    <input id="pf-deadline" value="${normalizeDate(s.makeupDeadline)||''}" placeholder="2026/08/31"
-      style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;width:120px">
-    <button onclick="saveDeadlines('${s.id}')" class="btn btn-green" style="font-size:13px;padding:6px 16px">儲存期限</button>
-  </div>`;
-
   document.getElementById('lookupContent').innerHTML=`<div class="profile">
     <div class="phdr">
       <span style="font-size:32px">${s.emoji}</span>
@@ -426,12 +420,18 @@ async function showProfile(sid){
       <div class="pstat"><div class="pstat-val" style="color:${c.pendingMakeup>0?'#e67e22':'#2d5a3d'};font-size:24px">${c.pendingMakeup}</div><div class="pstat-lbl" style="font-size:12px">待補課</div></div>
       <div class="pstat"><div class="pstat-val" style="color:${rc};font-size:24px">${c.remain}</div><div class="pstat-lbl" style="font-size:12px">剩餘堂數</div></div>
     </div>
-    ${prevSection}${currSection}${attendSection}${notesSection}${deadlineSection}
+    ${prevSection}${currSection}${attendSection}${notesSection}
+    <div style="padding:14px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="font-size:13px;font-weight:600;color:var(--muted)">本季補課期限</span>
+      <input id="pf-deadline" value="${normalizeDate(s.makeupDeadline)||''}" placeholder="2026/08/31"
+        style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;width:120px">
+      <button onclick="saveDeadlines('${s.id}')" class="btn btn-green" style="font-size:13px;padding:6px 16px">儲存期限</button>
+    </div>
   </div>`;
 }
 
 async function saveMakeupSlots(sid){
-  const slots=[0,1,2,3,4].map(i=>document.getElementById('pf-slot-'+i).value.trim());
+  const slots=[0,1,2,3,4,5,6,7,8,9].map(i=>document.getElementById('pf-slot-'+i).value.trim());
   const prevDeadline=document.getElementById('pf-prevdeadline').value.trim();
   await apiGet({action:'editStudent',studentId:sid,makeupSlots:slots.join('|'),prevMakeupDeadline:prevDeadline});
   const s=students.find(x=>x.id===sid);
@@ -440,7 +440,7 @@ async function saveMakeupSlots(sid){
 }
 
 async function saveCurrentMakeupSlots(sid){
-  const slots=[0,1,2,3,4].map(i=>document.getElementById('pf-curr-'+i).value.trim());
+  const slots=[0,1,2,3,4,5,6,7,8,9].map(i=>document.getElementById('pf-curr-'+i).value.trim());
   await apiGet({action:'editStudent',studentId:sid,currentMakeupSlots:slots.join('|')});
   const s=students.find(x=>x.id===sid);
   if(s)s.currentMakeupSlots=slots;
