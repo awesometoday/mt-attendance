@@ -479,7 +479,8 @@ function renderAdmin(){
   const sorted=[...students].sort((a,b)=>clsIdx(a.class)-clsIdx(b.class)||a.name.localeCompare(b.name,'zh'));
   let lastClass='';
   sl.innerHTML=sorted.map(s=>{
-    const c=calc(s, dates);
+    const sc=classes.find(cl=>cl.name===s.class);
+    const c=calc(s, sc?sc.dates:null);
     const rc=c.remain===0?'rdanger':c.remain<=2?'rwarn':'rok';
     let header='';
     if(s.class!==lastClass){
