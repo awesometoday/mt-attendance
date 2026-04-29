@@ -203,12 +203,7 @@ function calc(s){
   const prev=s.prevMakeup||0;
   // 正確算法：總堂數=購買+上季補課額度，扣除=出席+缺課+上季補課已用+本季補課已用
   const totalEff=s.totalSessions+prev;
-  const currMadeup=(s.currentMakeupSlots||[]).filter(x=>{
-    if(!x||!x.trim()||x.trim()==='NA')return false;
-    const n=normalizeDate(x.trim());
-    if(!/^\d{4}\/\d{2}\/\d{2}$/.test(n))return false;
-    return parseInt(n)>=2020; // reject garbage years like 2001
-  }).length;
+  const currMadeup=(s.currentMakeupSlots||[]).filter(x=>x&&/^\d{4}\/\d{2}\/\d{2}$/.test(String(x).trim())).length;
   const used=present+truant+prevmakeup+currMadeup;
   const remain=Math.max(0,totalEff-used);
   const displayPresent=present+prevmakeup+currMadeup; // 出席+上季補課+本季補課
@@ -340,19 +335,15 @@ function renderLookup(){
 async function showProfile(sid){
   const s=students.find(x=>x.id===sid);if(!s)return;
   document.getElementById('lookupContent').innerHTML='<div class="lmask">載入中…</div>';
+  // 確保 classes 已載入（切換分頁時可能還沒有）
+  if(!classes.length) await loadClasses();
   await loadAllAttendance();
   const c=calc(s);
   const co=classes.find(cl=>cl.name===s.class);
   const dates=co?co.dates:[];
   const rc=c.remain===0?'#c0392b':c.remain<=2?'#e67e22':'#2d5a3d';
 
-  const makeupSlots=(s.makeupSlots||[]).concat(['','','','','','','','','','']).slice(0,10).map(v=>{
-    if(!v||!v.trim())return'';
-    if(v.trim()==='NA')return'NA';
-    const n=normalizeDate(v);
-    if(!/^\d{4}\/\d{2}\/\d{2}$/.test(n))return'';
-    return parseInt(n)>=2020?n:''; // reject garbage years
-  });
+  const makeupSlots=(s.makeupSlots||[]).concat(['','','','','','','','','','']).slice(0,10).map(v=>v&&v.trim()==='NA'?'NA':(v&&/^\d{4}\/\d{2}\/\d{2}$/.test(String(v).trim())?String(v).trim():(v?normalizeDate(String(v)):''))||'');
   const ss2='padding:16px;border-bottom:1px solid var(--border)';
   const stitle=(t)=>`<div style="font-size:14px;font-weight:700;color:var(--green);margin-bottom:12px">${t}</div>`;
 
@@ -374,13 +365,7 @@ async function showProfile(sid){
     <button onclick="saveMakeupSlots('${s.id}')" class="btn btn-green" style="font-size:13px;padding:6px 16px">儲存上季補課</button>
   </div>`;
 
-  const currSlots=(s.currentMakeupSlots||[]).concat(['','','','','','','','','','']).slice(0,10).map(v=>{
-    if(!v||!v.trim())return'';
-    if(v.trim()==='NA')return'NA';
-    const n=normalizeDate(v);
-    if(!/^\d{4}\/\d{2}\/\d{2}$/.test(n))return'';
-    return parseInt(n)>=2020?n:''; // reject garbage years
-  });
+  const currSlots=(s.currentMakeupSlots||[]).concat(['','','','','','','','','','']).slice(0,10).map(v=>v&&v.trim()==='NA'?'NA':(v&&/^\d{4}\/\d{2}\/\d{2}$/.test(String(v).trim())?String(v).trim():(v?normalizeDate(String(v)):''))||'');
   const currSection=`<div style="${ss2}">
     ${stitle('🗓 本季補課記錄')}
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
