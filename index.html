@@ -201,13 +201,17 @@ function calc(s){
     else if(st==='prevmakeup')prevmakeup++;
   });
   const prev=s.prevMakeup||0;
-  const prevMadeup=(s.makeupSlots||[]).filter(x=>x&&x.trim()).length;
-  const currMadeup=(s.currentMakeupSlots||[]).filter(x=>x&&x.trim()).length;
-  const used=present+truant;
-  const prevPending=Math.max(0,prev-prevMadeup);
+  // 正確算法：總堂數=購買+上季補課額度，扣除=出席+缺課+上季補課已用
+  const totalEff=s.totalSessions+prev;
+  const used=present+truant+prevmakeup;
+  const remain=Math.max(0,totalEff-used);
+  const displayPresent=present+prevmakeup; // 顯示出席次數含上季補課
+  const currMadeup=(s.currentMakeupSlots||[]).filter(x=>x&&x.trim()&&x!=='NA').length;
+  const prevPending=Math.max(0,prev-prevmakeup);
   const currPending=Math.max(0,absent-currMadeup);
   const pendingMakeup=prevPending+currPending;
-  return{present,absent,truant,prevmakeup,prevMadeup,currMadeup,prevPending,currPending,pendingMakeup,used,remain:Math.max(0,s.totalSessions-used)};
+  const prevMadeup=prevmakeup;
+  return{present,absent,truant,prevmakeup,prevMadeup,currMadeup,prevPending,currPending,pendingMakeup,used,remain,displayPresent};
 }
 
 function todayStr(){const d=new Date();return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;}
@@ -289,13 +293,13 @@ function renderAttendTable(){
           </div>
         </td>`;
       }).join('')}
-      <td class="ic">${c.present}</td>
+      <td class="ic">${c.displayPresent}</td>
       <td class="ic">${c.absent}</td>
       <td class="ic">${c.truant}</td>
       <td class="ic">${c.pendingMakeup>0?`<span style="color:var(--amber);font-weight:600">${c.pendingMakeup}</span>`:'0'}</td>
       <td class="ic"><span class="${rc}">${c.remain}</span></td>
     </tr>`;
-  });
+  }).join('');
   html+='</tbody></table></div>';
   el.innerHTML=html;
 }
@@ -310,7 +314,6 @@ async function setCell(sid,name,cls,date,type){
     await apiGet({action:'markAttendance',studentId:sid,name,cls,date,status:next});
     renderAttendTable();
   }catch(e){
-    // rollback
     if(cur==='none')delete attendanceCache[date][sid];
     else attendanceCache[date][sid]=cur;
     showToast('儲存失敗');
@@ -331,16 +334,13 @@ function renderLookup(){
 
 async function showProfile(sid){
   const s=students.find(x=>x.id===sid);if(!s)return;
-  // 先顯示載入中
   document.getElementById('lookupContent').innerHTML='<div class="lmask">載入中…</div>';
-  // 重新 fetch 最新出席記錄
   await loadAllAttendance();
   const c=calc(s);
   const co=classes.find(cl=>cl.name===s.class);
   const dates=co?co.dates:[];
   const rc=c.remain===0?'#c0392b':c.remain<=2?'#e67e22':'#2d5a3d';
 
-  // 上季補課記錄（10格）
   const makeupSlots=(s.makeupSlots||[]).concat(['','','','','','','','','','']).slice(0,10);
   const ss2='padding:16px;border-bottom:1px solid var(--border)';
   const stitle=(t)=>`<div style="font-size:14px;font-weight:700;color:var(--green);margin-bottom:12px">${t}</div>`;
@@ -363,7 +363,6 @@ async function showProfile(sid){
     <button onclick="saveMakeupSlots('${s.id}')" class="btn btn-green" style="font-size:13px;padding:6px 16px">儲存上季補課</button>
   </div>`;
 
-  // 本季補課記錄（10格）
   const currSlots=(s.currentMakeupSlots||[]).concat(['','','','','','','','','','']).slice(0,10);
   const currSection=`<div style="${ss2}">
     ${stitle('🗓 本季補課記錄')}
@@ -377,7 +376,6 @@ async function showProfile(sid){
     <button onclick="saveCurrentMakeupSlots('${s.id}')" class="btn btn-green" style="font-size:13px;padding:6px 16px">儲存本季補課</button>
   </div>`;
 
-  // 本季出席記錄
   const tlHTML=dates.map((d,i)=>{
     const st=(attendanceCache[d]||{})[s.id];
     const future=isFuture(d);
@@ -391,7 +389,7 @@ async function showProfile(sid){
   }).join('');
 
   const calcNote=`<div style="font-size:12px;color:var(--muted);background:#f8f8f5;border-radius:8px;padding:10px 14px;margin-bottom:12px;line-height:2">
-    <b>剩餘堂數</b> = 購買${s.totalSessions}堂 － 出席${c.present}次 － 缺課${c.truant}次 = <b>${c.remain}堂</b><br>
+    <b>剩餘堂數</b> = （購買${s.totalSessions}＋上季補課${s.prevMakeup||0}）－ 出席${c.displayPresent}次 － 缺課${c.truant}次 = <b>${c.remain}堂</b><br>
     <b>待補課</b> = 上季欠補${c.prevPending}堂 ＋ 本季請假未補${c.currPending}堂 = <b>${c.pendingMakeup}堂</b>
   </div>`;
 
@@ -414,7 +412,7 @@ async function showProfile(sid){
       <div><div class="pname" style="font-size:20px">${s.name}</div><div class="pcls" style="font-size:14px">${s.class}</div></div>
     </div>
     <div class="pstats">
-      <div class="pstat"><div class="pstat-val" style="color:#2d5a3d;font-size:24px">${c.present}</div><div class="pstat-lbl" style="font-size:12px">出席</div></div>
+      <div class="pstat"><div class="pstat-val" style="color:#2d5a3d;font-size:24px">${c.displayPresent}</div><div class="pstat-lbl" style="font-size:12px">出席</div></div>
       <div class="pstat"><div class="pstat-val" style="color:#856404;font-size:24px">${c.absent}</div><div class="pstat-lbl" style="font-size:12px">請假</div></div>
       <div class="pstat"><div class="pstat-val" style="color:#c0392b;font-size:24px">${c.truant}</div><div class="pstat-lbl" style="font-size:12px">缺課</div></div>
       <div class="pstat"><div class="pstat-val" style="color:${c.pendingMakeup>0?'#e67e22':'#2d5a3d'};font-size:24px">${c.pendingMakeup}</div><div class="pstat-lbl" style="font-size:12px">待補課</div></div>
@@ -475,7 +473,6 @@ function renderAdmin(){
   const classOrder=['三 11:10 MT','四 9:50 MT','四 16:50 STEAM','四 18:10 鍵盤','五 9:50 MT','五 11:10 MT','六 9:00 MT','六 10:10 MT','六 11:20 MT','六 13:30 鍵盤','六 15:00 STEAM'];
   const clsIdx=c=>{ const i=classOrder.indexOf(c); return i>=0?i:99; };
   const sorted=[...students].sort((a,b)=>clsIdx(a.class)-clsIdx(b.class)||a.name.localeCompare(b.name,'zh'));
-  // 按班級分組加標題
   let lastClass='';
   sl.innerHTML=sorted.map(s=>{
     const c=calc(s);
