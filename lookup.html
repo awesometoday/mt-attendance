@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>好森 · 出席查詢</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --green-deep: #1e3d2a;
+    --green-mid:  #2d5a3d;
+    --green-soft: #4a7c5f;
+    --green-pale: #e8f2ec;
+    --green-mist: #f3f8f5;
+    --amber:      #c47c2b;
+    --amber-pale: #fdf3e4;
+    --red:        #b53a3a;
+    --red-pale:   #fdeaea;
+    --ink:        #1a2820;
+    --muted:      #6b8070;
+    --border:     #d4e4db;
+    --white:      #fdfffe;
+    --radius:     14px;
+    --shadow:     0 4px 24px rgba(30,61,42,.10);
+  }
+
+  html, body {
+    min-height: 100vh;
+    background: var(--green-mist);
+    font-family: 'Noto Serif TC', serif;
+    color: var(--ink);
+  }
+
+  /* ── background texture ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% -10%, rgba(74,124,95,.13) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 80% at 90% 110%, rgba(30,61,42,.09) 0%, transparent 60%);
+    pointer-events: none; z-index: 0;
+  }
+
+  .wrap {
+    position: relative; z-index: 1;
+    max-width: 480px; margin: 0 auto;
+    padding: 32px 20px 60px;
+  }
+
+  /* ── header ── */
+  .site-header {
+    text-align: center;
+    margin-bottom: 36px;
+  }
+  .site-logo {
+    display: inline-flex; align-items: center; gap: 10px;
+    margin-bottom: 8px;
+  }
+  .logo-leaf {
+    width: 40px; height: 40px;
+    background: var(--green-mid);
+    border-radius: 50% 50% 50% 10%;
+    transform: rotate(-20deg);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+  }
+  .logo-text {
+    font-size: 26px; font-weight: 700;
+    color: var(--green-deep);
+    letter-spacing: .05em;
+  }
+  .site-sub {
+    font-size: 13px; color: var(--muted);
+    letter-spacing: .06em;
+  }
+
+  /* ── search card ── */
+  .search-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    padding: 28px 24px 24px;
+    margin-bottom: 20px;
+  }
+  .search-label {
+    font-size: 12px; font-weight: 600;
+    color: var(--muted); letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .field-group { margin-bottom: 14px; }
+  .field-group input,
+  .field-group select {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 16px;
+    font-family: 'Noto Serif TC', serif;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    background: var(--green-mist);
+    color: var(--ink);
+    outline: none;
+    transition: border-color .2s;
+    -webkit-appearance: none;
+  }
+  .field-group input:focus,
+  .field-group select:focus {
+    border-color: var(--green-soft);
+    background: var(--white);
+  }
+  .field-group input::placeholder { color: var(--muted); font-size: 14px; }
+
+  /* custom select arrow */
+  .select-wrap { position: relative; }
+  .select-wrap::after {
+    content: '▾';
+    position: absolute; right: 14px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted); pointer-events: none;
+    font-size: 14px;
+  }
+
+  .search-btn {
+    width: 100%; padding: 14px;
+    background: var(--green-mid);
+    color: var(--white);
+    font-family: 'Noto Serif TC', serif;
+    font-size: 16px; font-weight: 600;
+    border: none; border-radius: 10px;
+    cursor: pointer;
+    letter-spacing: .06em;
+    transition: background .2s, transform .1s;
+    position: relative;
+    overflow: hidden;
+  }
+  .search-btn:hover { background: var(--green-deep); }
+  .search-btn:active { transform: scale(.98); }
+  .search-btn:disabled {
+    background: var(--green-pale);
+    color: var(--muted); cursor: default;
+  }
+  .search-btn .spinner {
+    display: none;
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,.4);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+    position: absolute; right: 18px; top: 50%;
+    transform: translateY(-50%);
+  }
+  .search-btn.loading .spinner { display: block; }
+
+  @keyframes spin { to { transform: translateY(-50%) rotate(360deg); } }
+
+  /* ── messages ── */
+  .msg {
+    text-align: center; padding: 16px;
+    font-size: 14px; color: var(--muted);
+    animation: fadeIn .3s ease;
+  }
+  .msg.error {
+    background: var(--red-pale);
+    color: var(--red);
+    border-radius: 10px;
+    border: 1px solid rgba(181,58,58,.2);
+  }
+
+  /* ── profile card ── */
+  .profile-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    animation: slideUp .35s ease;
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; } to { opacity: 1; }
+  }
+
+  .profile-hero {
+    background: linear-gradient(135deg, var(--green-mid) 0%, var(--green-deep) 100%);
+    padding: 24px 20px;
+    display: flex; align-items: center; gap: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .profile-hero::after {
+    content: '🌿';
+    position: absolute; right: -8px; bottom: -12px;
+    font-size: 64px; opacity: .12;
+    transform: rotate(20deg);
+  }
+  .profile-emoji-wrap {
+    width: 64px; height: 64px;
+    background: rgba(255,255,255,.15);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px;
+    flex-shrink: 0;
+    backdrop-filter: blur(4px);
+  }
+  .profile-info { flex: 1; }
+  .profile-name {
+    font-size: 22px; font-weight: 700;
+    color: white; margin-bottom: 4px;
+  }
+  .profile-class {
+    font-size: 13px;
+    color: rgba(255,255,255,.75);
+    letter-spacing: .04em;
+  }
+
+  /* stats row */
+  .stats-row {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    border-bottom: 1px solid var(--border);
+  }
+  .stat {
+    padding: 16px 8px;
+    text-align: center;
+    border-right: 1px solid var(--border);
+  }
+  .stat:last-child { border-right: none; }
+  .stat-val {
+    font-size: 22px; font-weight: 700;
+    line-height: 1; margin-bottom: 5px;
+    font-family: 'DM Mono', monospace;
+  }
+  .stat-lbl {
+    font-size: 11px; color: var(--muted);
+    letter-spacing: .04em;
+  }
+  .val-present { color: var(--green-mid); }
+  .val-leave   { color: var(--amber); }
+  .val-absent  { color: var(--red); }
+  .val-remain  { color: var(--green-deep); }
+  .val-warn    { color: var(--amber); }
+  .val-danger  { color: var(--red); }
+
+  /* makeup alert */
+  .makeup-alert {
+    padding: 10px 16px;
+    background: var(--amber-pale);
+    border-bottom: 1px solid rgba(196,124,43,.2);
+    font-size: 13px; color: var(--amber);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .makeup-alert strong { font-weight: 600; }
+
+  /* timeline */
+  .timeline-section { padding: 16px 20px 20px; }
+  .timeline-head {
+    font-size: 11px; font-weight: 600;
+    color: var(--muted); letter-spacing: .1em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tl-row {
+    display: flex; align-items: center;
+    gap: 10px; padding: 8px 0;
+    border-bottom: 1px solid var(--green-mist);
+    font-size: 14px;
+    animation: fadeIn .2s ease both;
+  }
+  .tl-row:last-child { border-bottom: none; }
+  .tl-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px; color: var(--muted);
+    width: 20px; text-align: right;
+    flex-shrink: 0;
+  }
+  .tl-date {
+    color: var(--muted); font-size: 13px;
+    flex: 1;
+  }
+  .tl-badge {
+    font-size: 12px; font-weight: 500;
+    padding: 3px 10px; border-radius: 20px;
+    letter-spacing: .03em;
+  }
+  .b-present { background: #e8f5e9; color: #2d5a3d; }
+  .b-leave   { background: var(--amber-pale); color: var(--amber); }
+  .b-absent  { background: var(--red-pale); color: var(--red); }
+  .b-makeup  { background: #e8eaf6; color: #3949ab; }
+  .b-none    { background: #f5f5f5; color: #aaa; }
+  .b-future  { background: transparent; color: var(--border); font-style: italic; }
+
+  /* future row dim */
+  .tl-row.is-future { opacity: .5; }
+
+  /* footer */
+  .footer {
+    text-align: center; margin-top: 32px;
+    font-size: 12px; color: var(--muted);
+    opacity: .7;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- header -->
+  <header class="site-header">
+    <div class="site-logo">
+      <div class="logo-leaf">🌿</div>
+      <span class="logo-text">好森</span>
+    </div>
+    <div class="site-sub">Music Together 春季 2026 · 出席查詢</div>
+  </header>
+
+  <!-- search -->
+  <div class="search-card">
+    <div class="search-label">查詢我的出席紀錄</div>
+
+    <div class="field-group">
+      <input type="text" id="nicknameInput"
+        placeholder="請輸入學生暱稱（例：暘暘）"
+        autocomplete="off" autocorrect="off" spellcheck="false"
+        inputmode="text">
+    </div>
+
+    <div class="field-group">
+      <div class="select-wrap">
+        <select id="classSelect">
+          <option value="">載入中…</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="search-btn" id="searchBtn" onclick="doSearch()">
+      查詢
+      <span class="spinner"></span>
+    </button>
+  </div>
+
+  <!-- result area -->
+  <div id="result"></div>
+
+  <div class="footer">資料每次查詢即時同步 · 僅供查閱，無法修改</div>
+
+</div>
+
+<script>
+const API = 'https://script.google.com/macros/s/AKfycbwTl_pEaFQb-0UuATusXi_utWNAcR4cRE8Hu-WMUv-59PQxJXTXPIXvZsCOEzT_SQE/exec';
+
+let classesData = [];
+let allAttendance = {};
+
+// ── fetch helpers ──────────────────────────────────────────────
+async function apiGet(params) {
+  const url = API + '?' + new URLSearchParams(params);
+  const res = await fetch(url);
+  return res.json();
+}
+
+// ── load classes on startup ────────────────────────────────────
+async function loadClasses() {
+  try {
+    const data = await apiGet({ action: 'getClasses' });
+    classesData = Array.isArray(data) ? data : (data.classes || data.data || []);
+    const sel = document.getElementById('classSelect');
+    if (!classesData.length) {
+      sel.innerHTML = '<option value="">（無班級資料）</option>';
+      return;
+    }
+    sel.innerHTML = '<option value="">請選擇上課時段</option>' +
+      classesData.map(c => `<option value="${esc(c.name)}">${c.name}</option>`).join('');
+  } catch(e) {
+    document.getElementById('classSelect').innerHTML =
+      '<option value="">無法載入班級（請刷新）</option>';
+  }
+}
+
+// ── main search ────────────────────────────────────────────────
+async function doSearch() {
+  const name    = document.getElementById('nicknameInput').value.trim();
+  const cls     = document.getElementById('classSelect').value;
+  const btn     = document.getElementById('searchBtn');
+  const result  = document.getElementById('result');
+
+  if (!name) { showMsg('請輸入學生暱稱', 'error'); return; }
+  if (!cls)  { showMsg('請選擇上課時段', 'error'); return; }
+
+  btn.disabled = true;
+  btn.classList.add('loading');
+  btn.childNodes[0].textContent = '查詢中…';
+  result.innerHTML = '';
+
+  try {
+    // fetch students of that class + all attendance in parallel
+    const [stuData, attData] = await Promise.all([
+      apiGet({ action: 'getStudents', class: cls }),
+      apiGet({ action: 'getAllAttendance' })
+    ]);
+
+    // parse attendance → { studentId: { date: status } }
+    const attRows = Array.isArray(attData) ? attData : (attData.records || attData.data || []);
+    allAttendance = {};
+    attRows.forEach(r => {
+      if (!r.studentId && !r.id) return;
+      const sid = r.studentId || r.id;
+      if (!allAttendance[sid]) allAttendance[sid] = {};
+      allAttendance[sid][r.date] = r.status;
+    });
+
+    // find student by name (case-insensitive, trim)
+    const students = Array.isArray(stuData) ? stuData : (stuData.students || stuData.data || []);
+    const student  = students.find(s =>
+      (s.name || '').trim().toLowerCase() === name.toLowerCase()
+    );
+
+    if (!student) {
+      showMsg(`找不到「${name}」在 ${cls} 的紀錄，請確認暱稱和時段是否正確`, 'error');
+      return;
+    }
+
+    // find class dates
+    const classObj = classesData.find(c => c.name === cls);
+    const dates    = classObj ? (classObj.dates || []) : [];
+
+    renderProfile(student, dates);
+
+  } catch(e) {
+    showMsg('查詢失敗，請稍後再試', 'error');
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('loading');
+    btn.childNodes[0].textContent = '查詢';
+  }
+}
+
+// ── render profile ─────────────────────────────────────────────
+function renderProfile(s, dates) {
+  const sid = s.id || s.studentId;
+  const att = allAttendance[sid] || {};
+  const today = todayStr();
+
+  // calc stats
+  let present = 0, leave = 0, absent = 0, makeup = 0;
+  dates.forEach(d => {
+    if (d > today) return;
+    const st = att[d];
+    if (st === 'present') present++;
+    else if (st === 'absent') leave++;
+    else if (st === 'truant') absent++;
+    else if (st === 'makeup') makeup++;
+  });
+
+  const total   = Number(s.totalSessions) || 0;
+  // deductions: present + truant count
+  const deduct  = present + absent;
+  const prevMkp = Number(s.prevMakeup) || 0;
+  const remain  = total + prevMkp - deduct;
+
+  const pendingLeave  = leave;          // 請假待補
+  const pendingMakeup = Math.max(0, pendingLeave - makeup); // 尚未補的
+
+  const rcCls = remain <= 0 ? 'val-danger' : remain <= 2 ? 'val-warn' : 'val-remain';
+
+  // timeline rows
+  const tlHTML = dates.map((d, i) => {
+    const isFuture = d > today;
+    const st = att[d];
+    let badge, badgeCls, label;
+    if (isFuture) {
+      badge = '—'; badgeCls = 'b-future'; label = '';
+    } else if (!st) {
+      badge = '未登記'; badgeCls = 'b-none'; label = '';
+    } else {
+      const map = {
+        present: ['出席', 'b-present'],
+        absent:  ['請假', 'b-leave'],
+        truant:  ['缺課', 'b-absent'],
+        makeup:  ['補課', 'b-makeup'],
+      };
+      [badge, badgeCls] = map[st] || ['—', 'b-none'];
+    }
+    return `
+      <div class="tl-row${isFuture ? ' is-future' : ''}" style="animation-delay:${i * 30}ms">
+        <span class="tl-num">${i + 1}</span>
+        <span class="tl-date">${formatDate(d)}</span>
+        <span class="tl-badge ${badgeCls}">${badge}</span>
+      </div>`;
+  }).join('');
+
+  const makeupHTML = pendingMakeup > 0
+    ? `<div class="makeup-alert">⚠ <span>待補課 <strong>${pendingMakeup} 堂</strong>${s.makeupDeadline ? '，期限 ' + s.makeupDeadline : ''}</span></div>`
+    : '';
+
+  // prev season makeup note
+  const prevHTML = prevMkp > 0
+    ? `<div class="makeup-alert" style="background:#f0f4ff;color:#3949ab;border-color:rgba(57,73,171,.2)">📋 <span>含上季補課 <strong>${prevMkp} 堂</strong>${s.prevMakeupDeadline ? '（期限 ' + s.prevMakeupDeadline + '）' : ''}</span></div>`
+    : '';
+
+  document.getElementById('result').innerHTML = `
+    <div class="profile-card">
+      <div class="profile-hero">
+        <div class="profile-emoji-wrap">${s.emoji || '🎵'}</div>
+        <div class="profile-info">
+          <div class="profile-name">${esc(s.name)}</div>
+          <div class="profile-class">${esc(s.class)}</div>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat">
+          <div class="stat-val val-present">${present}</div>
+          <div class="stat-lbl">出席</div>
+        </div>
+        <div class="stat">
+          <div class="stat-val val-leave">${leave}</div>
+          <div class="stat-lbl">請假</div>
+        </div>
+        <div class="stat">
+          <div class="stat-val val-absent">${absent}</div>
+          <div class="stat-lbl">缺課</div>
+        </div>
+        <div class="stat">
+          <div class="stat-val ${rcCls}">${remain}</div>
+          <div class="stat-lbl">剩餘堂數</div>
+        </div>
+      </div>
+
+      ${prevHTML}${makeupHTML}
+
+      <div class="timeline-section">
+        <div class="timeline-head">每堂出席紀錄</div>
+        ${tlHTML || '<div class="msg">尚無紀錄</div>'}
+      </div>
+    </div>`;
+}
+
+// ── helpers ────────────────────────────────────────────────────
+function showMsg(text, type = '') {
+  document.getElementById('result').innerHTML =
+    `<div class="msg ${type}">${text}</div>`;
+}
+
+function todayStr() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}/${m}/${day}`;
+}
+
+function formatDate(s) {
+  if (!s) return '';
+  const parts = s.split('/');
+  if (parts.length < 3) return s;
+  const days = ['日','一','二','三','四','五','六'];
+  const d = new Date(parts[0], parts[1] - 1, parts[2]);
+  return `${parts[1]}/${parts[2]}（${days[d.getDay()]}）`;
+}
+
+function esc(s) {
+  if (!s) return '';
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// enter key to search
+document.addEventListener('DOMContentLoaded', () => {
+  loadClasses();
+  document.getElementById('nicknameInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doSearch();
+  });
+});
+</script>
+</body>
+</html>
