@@ -308,26 +308,27 @@ async function doSearch() {
   btn.childNodes[0].textContent = '查詢中…';
   result.innerHTML = '';
   try {
-    const [stuData, attData] = await Promise.all([
-      apiGet({ action: 'getStudents', class: cls }),
-      apiGet({ action: 'getAllAttendance' })
-    ]);
-    const attRows = Array.isArray(attData) ? attData : (attData.records || attData.data || []);
-    allAttendance = {};
-    attRows.forEach(r => {
-      const sid = r.studentId || r.id;
-      if (!sid) return;
-      if (!allAttendance[sid]) allAttendance[sid] = {};
-      allAttendance[sid][r.date] = r.status;
-    });
+    // Step 1: find student in this class
+    const stuData  = await apiGet({ action: 'getStudents', class: cls });
     const students = Array.isArray(stuData) ? stuData : (stuData.students || stuData.data || []);
     const student  = students.find(s => (s.name || '').trim().toLowerCase() === name.toLowerCase());
     if (!student) {
       showMsg(`找不到「${name}」在 ${cls} 的紀錄，請確認暱稱和時段是否正確`, 'error');
       return;
     }
+    // Step 2: fetch attendance for this student by ID
+    const sid     = student.id || student.studentId;
+    const attData = await apiGet({ action: 'getAttendance', studentId: sid });
+    const attRows = Array.isArray(attData) ? attData : (attData.records || attData.data || []);
+    allAttendance = {};
+    allAttendance[sid] = {};
+    attRows.forEach(r => {
+      const d = normDate(r.date);
+      if (d) allAttendance[sid][d] = (r.status || '').trim();
+    });
     const classObj = classesData.find(c => c.name === cls);
-    renderProfile(student, classObj ? (classObj.dates || []) : []);
+    const dates    = (classObj ? (classObj.dates || []) : []).map(normDate).filter(Boolean);
+    renderProfile(student, dates, sid);
   } catch(e) {
     showMsg('查詢失敗，請稍後再試', 'error');
     console.error(e);
@@ -343,6 +344,8 @@ function renderProfile(s, dates) {
   const today  = todayStr();
   const total  = Number(s.totalSessions) || 0;
   const prevMkp = Number(s.prevMakeup) || 0;
+  const prevDeadline = normDate(s.prevMakeupDeadline);
+  const thisDeadline = normDate(s.makeupDeadline);
 
   // ── calc stats ──
   let present = 0, leave = 0, absent = 0, mkpThis = 0, mkpPrev = 0;
@@ -393,7 +396,7 @@ function renderProfile(s, dates) {
       <div class="section">
         <div class="section-title">📌 上季補課記錄</div>
         <div class="makeup-meta">
-          ${s.prevMakeupDeadline ? `<span class="deadline-chip">補課期限 ${s.prevMakeupDeadline}</span>` : ''}
+          ${prevDeadline ? `<span class="deadline-chip">補課期限 ${prevDeadline}</span>` : ''}
           <span class="owed-chip">上季欠補：${prevMkp} 堂</span>
         </div>
         <div class="makeup-grid">${slotsHTML}</div>
@@ -502,6 +505,23 @@ function shortDate(s) {
   if (!s) return '';
   const p = s.split('/');
   return p.length >= 3 ? `${+p[1]}/${+p[2]}` : s;
+}
+
+function normDate(d) {
+  if (!d) return '';
+  // Handle Date objects serialized as strings like "Wed Feb 26 2026 00:00:00 GMT+0800"
+  const s = String(d).trim();
+  // Already in YYYY/MM/DD format
+  if (/^\d{4}\/\d{2}\/\d{2}$/.test(s)) return s;
+  // Try parsing as a date and reformatting
+  const parsed = new Date(s);
+  if (!isNaN(parsed.getTime())) {
+    const y = parsed.getFullYear();
+    const m = String(parsed.getMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getDate()).padStart(2, '0');
+    return `${y}/${m}/${day}`;
+  }
+  return s;
 }
 
 function isEmoji(s) {
