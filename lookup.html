@@ -382,10 +382,10 @@ function renderProfile(s, dates) {
     else if (st === 'makeup')     mkpThis++;
     else if (st === 'prevmakeup') mkpPrev++;
   });
-  const totalSessions = total + prevMkp;           // 購買 + 上季補課額度
-  const usedAll = present + absent + mkpPrev;       // 出席 + 缺課 + 上季補課已用
+  const totalSessions = total + prevMkp;                      // 購買 + 上季補課額度
+  const usedAll = present + absent + mkpPrev + mkpThis;       // 出席 + 缺課 + 上季補課已用 + 本季補課
   const remain  = totalSessions - usedAll;
-  const displayPresent = present + mkpPrev;         // 顯示出席次數 = 出席 + 上季補課
+  const displayPresent = present + mkpPrev + mkpThis;         // 出席 + 上季補課 + 本季補課
   const pendingLeave  = Math.max(0, leave - mkpThis);
   const prevOwed      = Math.max(0, prevMkp - mkpPrev);
   const pendingTotal  = prevOwed + pendingLeave;
@@ -519,7 +519,7 @@ function renderProfile(s, dates) {
         <div class="section-title">📅 本季出席記錄</div>
         <div class="formula">
           剩餘堂數 = （購買 <span>${total}</span> + 上季補課 <span>${prevMkp}</span>）
-            − 出席 <span>${displayPresent}</span> 次
+            − 出席 <span>${displayPresent}</span> 次（含補課）
             − 缺課 <span>${absent}</span> 次
             = <span>${remain}</span> 堂<br>
           待補課 = 上季欠補 <span>${prevOwed}</span> 堂
