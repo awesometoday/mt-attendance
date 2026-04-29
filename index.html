@@ -341,7 +341,12 @@ async function showProfile(sid){
   const dates=co?co.dates:[];
   const rc=c.remain===0?'#c0392b':c.remain<=2?'#e67e22':'#2d5a3d';
 
-  const makeupSlots=(s.makeupSlots||[]).concat(['','','','','','','','','','']).slice(0,10);
+  const makeupSlots=(s.makeupSlots||[]).concat(['','','','','','','','','','']).slice(0,10).map(v=>{
+    if(!v||!v.trim())return'';
+    if(v.trim()==='NA')return'NA';
+    const n=normalizeDate(v);
+    return/^\d{4}\/\d{2}\/\d{2}$/.test(n)?n:'';
+  });
   const ss2='padding:16px;border-bottom:1px solid var(--border)';
   const stitle=(t)=>`<div style="font-size:14px;font-weight:700;color:var(--green);margin-bottom:12px">${t}</div>`;
 
@@ -363,7 +368,12 @@ async function showProfile(sid){
     <button onclick="saveMakeupSlots('${s.id}')" class="btn btn-green" style="font-size:13px;padding:6px 16px">儲存上季補課</button>
   </div>`;
 
-  const currSlots=(s.currentMakeupSlots||[]).concat(['','','','','','','','','','']).slice(0,10);
+  const currSlots=(s.currentMakeupSlots||[]).concat(['','','','','','','','','','']).slice(0,10).map(v=>{
+    if(!v||!v.trim())return'';
+    if(v.trim()==='NA')return'NA';
+    const n=normalizeDate(v);
+    return/^\d{4}\/\d{2}\/\d{2}$/.test(n)?n:'';
+  });
   const currSection=`<div style="${ss2}">
     ${stitle('🗓 本季補課記錄')}
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
