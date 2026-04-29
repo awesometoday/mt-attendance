@@ -368,7 +368,7 @@ function renderProfile(s, dates) {
   const prevDeadline = normDate(s.prevMakeupDeadline);
   const thisDeadline = normDate(s.makeupDeadline);
 
-  // ── calc stats ──
+  // ── calc stats (matching admin logic) ──
   let present = 0, leave = 0, absent = 0, mkpThis = 0, mkpPrev = 0;
   dates.forEach(d => {
     if (d > today) return;
@@ -379,10 +379,12 @@ function renderProfile(s, dates) {
     else if (st === 'makeup')     mkpThis++;
     else if (st === 'prevmakeup') mkpPrev++;
   });
-  const deduct  = present + absent;
-  const remain  = total + prevMkp - deduct;
-  const pendingLeave  = Math.max(0, leave - (mkpThis + mkpPrev));
-  const prevOwed      = Math.max(0, prevMkp - mkpPrev);   // 上季還欠補
+  // Admin counts: all "used" sessions = present + truant + makeup + prevmakeup
+  const usedSessions = present + absent + mkpThis + mkpPrev;
+  const remain  = total - usedSessions;
+  // Admin pending = leave not yet made up (only counting this-season makeup)
+  const pendingLeave  = Math.max(0, leave - mkpThis);
+  const prevOwed      = Math.max(0, prevMkp - mkpPrev);
   const pendingTotal  = prevOwed + pendingLeave;
 
   const rcCls = remain <= 0 ? 'v-danger' : remain <= 2 ? 'v-warn' : 'v-remain';
@@ -473,8 +475,13 @@ function renderProfile(s, dates) {
       const label = {absent:'請假', truant:'缺課', makeup:'本季補課', prevmakeup:'上季補課'}[st] || st;
       return `<div class="note-row"><span class="note-date">${shortDate(d)}</span><span class="note-text">${label}</span></div>`;
     });
-  const notesHTML = notesList.length
-    ? `<div class="section"><div class="section-title">📝 備註</div><div class="notes-list">${notesList.join('')}</div></div>`
+  // Also include stored notes from student record
+  const storedNotes = (s.notes || s.memo || '').trim();
+  const notesHTML = (notesList.length || storedNotes)
+    ? `<div class="section"><div class="section-title">📝 備註</div>
+        ${storedNotes ? `<div style="font-size:13px;color:var(--ink);margin-bottom:${notesList.length?'10px':'0'};white-space:pre-line">${esc(storedNotes)}</div>` : ''}
+        <div class="notes-list">${notesList.join('')}</div>
+      </div>`
     : '';
 
   document.getElementById('result').innerHTML = `
@@ -489,7 +496,7 @@ function renderProfile(s, dates) {
       </div>
 
       <div class="stats-row">
-        <div class="stat"><div class="stat-val v-present">${present}</div><div class="stat-lbl">出席</div></div>
+        <div class="stat"><div class="stat-val v-present">${usedSessions}</div><div class="stat-lbl">出席</div></div>
         <div class="stat"><div class="stat-val v-leave">${leave}</div><div class="stat-lbl">請假</div></div>
         <div class="stat"><div class="stat-val v-absent">${absent}</div><div class="stat-lbl">缺課</div></div>
         <div class="stat"><div class="stat-val ${pkCls}">${pendingTotal}</div><div class="stat-lbl">待補課</div></div>
@@ -509,7 +516,7 @@ function renderProfile(s, dates) {
         <div class="section-title">📅 本季出席記錄</div>
         <div class="formula">
           剩餘堂數 = 購買 <span>${total}</span> 堂
-            − 出席 <span>${present}</span> 次
+            − 出席 <span>${usedSessions}</span> 次
             − 缺課 <span>${absent}</span> 次
             = <span>${remain}</span> 堂<br>
           待補課 = 上季欠補 <span>${prevOwed}</span> 堂
@@ -536,8 +543,13 @@ function showMsg(t, type='') {
       const label = {absent:'請假', truant:'缺課', makeup:'本季補課', prevmakeup:'上季補課'}[st] || st;
       return `<div class="note-row"><span class="note-date">${shortDate(d)}</span><span class="note-text">${label}</span></div>`;
     });
-  const notesHTML = notesList.length
-    ? `<div class="section"><div class="section-title">📝 備註</div><div class="notes-list">${notesList.join('')}</div></div>`
+  // Also include stored notes from student record
+  const storedNotes = (s.notes || s.memo || '').trim();
+  const notesHTML = (notesList.length || storedNotes)
+    ? `<div class="section"><div class="section-title">📝 備註</div>
+        ${storedNotes ? `<div style="font-size:13px;color:var(--ink);margin-bottom:${notesList.length?'10px':'0'};white-space:pre-line">${esc(storedNotes)}</div>` : ''}
+        <div class="notes-list">${notesList.join('')}</div>
+      </div>`
     : '';
 
   document.getElementById('result').innerHTML = `<div class="msg ${type}">${t}</div>`;
