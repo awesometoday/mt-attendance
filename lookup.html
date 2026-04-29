@@ -351,6 +351,11 @@ async function doSearch() {
     });
     const classObj = classesData.find(c => c.name === cls);
     const dates    = (classObj ? (classObj.dates || []) : []).map(normDate).filter(Boolean);
+    // 暫時顯示原始欄位以便除錯
+    console.log('STUDENT:', JSON.stringify(student));
+    console.log('currentMakeupSlots:', student.currentMakeupSlots);
+    console.log('totalSessions:', student.totalSessions);
+    console.log('ATT sample:', JSON.stringify(Object.entries(allAttendance).slice(0,3)));
     renderProfile(student, dates);
   } catch(e) {
     showMsg('查詢失敗，請稍後再試', 'error');
@@ -382,22 +387,13 @@ function renderProfile(s, dates) {
     else if (st === 'truant')     absent++;
     else if (st === 'prevmakeup') mkpPrev++;
   });
-  // 本季補課：掃所有出席記錄找 makeup（補課通常在非課表日，不能只看課表日期）
-  const mkpThis = (() => {
-    let count = 0;
-    // 從 allAttendance 直接掃，避免 att merge 遺漏
-    const sid2 = s.id || s.studentId;
-    const nk2 = 'name::' + String(s.name).trim().toLowerCase();
-    const allDates = new Set([
-      ...Object.keys(allAttendance[sid2] || {}),
-      ...Object.keys(allAttendance[nk2] || {})
-    ]);
-    allDates.forEach(d => {
-      const st = (allAttendance[sid2] || {})[d] || (allAttendance[nk2] || {})[d];
-      if (st === 'makeup') count++;
-    });
-    return count;
-  })();
+  // 本季補課：從學生資料的 currentMakeupSlots 算（跟 admin 完全一致）
+  const rawCurrSlots = (s.currentMakeupSlots || []);
+  const mkpThis = rawCurrSlots.filter(x => {
+    if (!x || !String(x).trim() || String(x).trim() === 'NA') return false;
+    const n = normDate(String(x).trim());
+    return /^\d{4}\/\d{2}\/\d{2}$/.test(n) && parseInt(n.substring(0,4)) >= 2020;
+  }).length;
   const totalSessions = total + prevMkp;
   const usedAll = present + absent + mkpPrev + mkpThis;
   const remain  = totalSessions - usedAll;
@@ -417,8 +413,12 @@ function renderProfile(s, dates) {
       : String(s.makeupSlots).split('|').filter(Boolean);
   }
 
-  // ── this-season makeup dates from attendance ──
-  const thisMkpDates = dates.filter(d => att[d] === 'makeup');
+  // ── this-season makeup slots from student data (same source as admin) ──
+  const thisMkpDates = rawCurrSlots.map(x => {
+    if (!x || !String(x).trim() || String(x).trim() === 'NA') return null;
+    const n = normDate(String(x).trim());
+    return (/^\d{4}\/\d{2}\/\d{2}$/.test(n) && parseInt(n.substring(0,4)) >= 2020) ? n : null;
+  }).filter(Boolean);
 
   // ── prev makeup section HTML ──
   let prevSectionHTML = '';
@@ -459,7 +459,7 @@ function renderProfile(s, dates) {
     </div>`;
   }).join('');
 
-  // ── timeline HTML ──
+  // ── timeline HTML (makeup shown inline next to 請假) ──
   const STATUS_MAP = {
     present:    ['出席',    'b-present'],
     absent:     ['請假',    'b-leave'],
@@ -468,18 +468,39 @@ function renderProfile(s, dates) {
     prevmakeup: ['上季補課', 'b-prev'],
     none:       ['未登記',  'b-none'],
   };
+  // Build ordered list of valid makeup dates from currentMakeupSlots
+  const makeupQueue = rawCurrSlots.map(x => {
+    if (!x || !String(x).trim() || String(x).trim() === 'NA') return null;
+    const n = normDate(String(x).trim());
+    return (/^\d{4}\/\d{2}\/\d{2}$/.test(n) && parseInt(n.substring(0,4)) >= 2020) ? n : null;
+  }).filter(Boolean);
+
+  let mkpIdx = 0; // pointer into makeupQueue per absence
   const tlHTML = dates.map((d, i) => {
     const isFuture = d > today;
     const st = att[d];
     let badge, badgeCls;
-    if (isFuture)           { badge = '—';    badgeCls = 'b-future'; }
+    if (isFuture)                  { badge = '—';    badgeCls = 'b-future'; }
     else if (!st || st === 'none') { badge = '未登記'; badgeCls = 'b-none'; }
     else { [badge, badgeCls] = STATUS_MAP[st] || [st, 'b-none']; }
+
+    // Inline makeup info for 請假 rows
+    let mkpTag = '';
+    if (st === 'absent' && !isFuture) {
+      const mkpDate = makeupQueue[mkpIdx];
+      mkpIdx++;
+      if (mkpDate) {
+        mkpTag = `<span class="badge b-makeup" style="margin-left:6px">補 ${shortDate(mkpDate)} ✓</span>`;
+      } else {
+        mkpTag = `<span style="margin-left:6px;font-size:11px;color:#bbb">待補</span>`;
+      }
+    }
+
     return `
       <div class="tl-row${isFuture ? ' is-future' : ''}" style="animation-delay:${i * 25}ms">
         <span class="tl-week">W${i + 1}</span>
         <span class="tl-date">${formatDate(d)}</span>
-        <span class="badge ${badgeCls}">${badge}</span>
+        <span class="badge ${badgeCls}">${badge}</span>${mkpTag}
       </div>`;
   }).join('');
 
@@ -523,12 +544,7 @@ function renderProfile(s, dates) {
 
       ${prevSectionHTML}
 
-      <div class="section">
-        <div class="section-title">📋 本季補課記錄</div>
-        <div class="makeup-grid">
-          ${leave > 0 ? thisSlotsHTML : '<span style="font-size:13px;color:var(--muted)">本季尚無需補課記錄</span>'}
-        </div>
-      </div>
+
 
       <div class="section">
         <div class="section-title">📅 本季出席記錄</div>
