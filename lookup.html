@@ -331,9 +331,9 @@ async function doSearch() {
         if (!allAttendance[r.studentId]) allAttendance[r.studentId] = {};
         allAttendance[r.studentId][d] = status;
       }
-      // Index by name:class as fallback
-      if (r.name && r.class) {
-        const nk = `${r.name}::${r.class}`;
+      // Index by name only as fallback (class name may differ across records)
+      if (r.name) {
+        const nk = `name::${r.name}`;
         if (!allAttendance[nk]) allAttendance[nk] = {};
         allAttendance[nk][d] = status;
       }
@@ -352,7 +352,7 @@ async function doSearch() {
 
 function renderProfile(s, dates) {
   const sid    = s.id || s.studentId;
-  const nameKey = `${s.name}::${s.class}`;
+  const nameKey = `name::${s.name}`;
   const att    = allAttendance[sid] || allAttendance[nameKey] || {};
   const today  = todayStr();
   const total  = Number(s.totalSessions) || 0;
