@@ -368,7 +368,10 @@ function renderProfile(s, dates) {
   const prevDeadline = normDate(s.prevMakeupDeadline);
   const thisDeadline = normDate(s.makeupDeadline);
 
-  // ── calc stats (matching admin logic) ──
+  // ── calc stats ──
+  // 總堂數 = 購買 + 上季補課
+  // 扣除 = 出席 + 上季補課已用 + 缺課
+  // 剩餘 = 總堂數 − 扣除
   let present = 0, leave = 0, absent = 0, mkpThis = 0, mkpPrev = 0;
   dates.forEach(d => {
     if (d > today) return;
@@ -379,10 +382,10 @@ function renderProfile(s, dates) {
     else if (st === 'makeup')     mkpThis++;
     else if (st === 'prevmakeup') mkpPrev++;
   });
-  // Admin counts: all "used" sessions = present + truant + makeup + prevmakeup
-  const usedSessions = present + absent + mkpThis + mkpPrev;
-  const remain  = total - usedSessions;
-  // Admin pending = leave not yet made up (only counting this-season makeup)
+  const totalSessions = total + prevMkp;           // 購買 + 上季補課額度
+  const usedAll = present + absent + mkpPrev;       // 出席 + 缺課 + 上季補課已用
+  const remain  = totalSessions - usedAll;
+  const displayPresent = present + mkpPrev;         // 顯示出席次數 = 出席 + 上季補課
   const pendingLeave  = Math.max(0, leave - mkpThis);
   const prevOwed      = Math.max(0, prevMkp - mkpPrev);
   const pendingTotal  = prevOwed + pendingLeave;
@@ -496,7 +499,7 @@ function renderProfile(s, dates) {
       </div>
 
       <div class="stats-row">
-        <div class="stat"><div class="stat-val v-present">${usedSessions}</div><div class="stat-lbl">出席</div></div>
+        <div class="stat"><div class="stat-val v-present">${displayPresent}</div><div class="stat-lbl">出席</div></div>
         <div class="stat"><div class="stat-val v-leave">${leave}</div><div class="stat-lbl">請假</div></div>
         <div class="stat"><div class="stat-val v-absent">${absent}</div><div class="stat-lbl">缺課</div></div>
         <div class="stat"><div class="stat-val ${pkCls}">${pendingTotal}</div><div class="stat-lbl">待補課</div></div>
@@ -515,8 +518,8 @@ function renderProfile(s, dates) {
       <div class="section">
         <div class="section-title">📅 本季出席記錄</div>
         <div class="formula">
-          剩餘堂數 = 購買 <span>${total}</span> 堂
-            − 出席 <span>${usedSessions}</span> 次
+          剩餘堂數 = （購買 <span>${total}</span> + 上季補課 <span>${prevMkp}</span>）
+            − 出席 <span>${displayPresent}</span> 次
             − 缺課 <span>${absent}</span> 次
             = <span>${remain}</span> 堂<br>
           待補課 = 上季欠補 <span>${prevOwed}</span> 堂
