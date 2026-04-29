@@ -315,13 +315,17 @@ async function doSearch() {
   btn.childNodes[0].textContent = '查詢中…';
   result.innerHTML = '';
   try {
-    // Fetch students + all attendance in parallel (same source as admin)
+    // Fetch all students (full data) + all attendance in parallel
     const [stuData, attData] = await Promise.all([
-      apiGet({ action: 'getStudents', class: cls }),
+      apiGet({ action: 'getStudents' }),   // 不加 class filter，確保欄位完整
       apiGet({ action: 'getAllAttendance' })
     ]);
     const students = Array.isArray(stuData) ? stuData : (stuData.students || stuData.data || []);
-    const student  = students.find(s => (s.name || '').trim().toLowerCase() === name.toLowerCase());
+    // Match by name AND class
+    const student = students.find(s =>
+      (s.name || '').trim().toLowerCase() === name.toLowerCase() &&
+      (s.class || '').trim() === cls.trim()
+    );
     if (!student) {
       showMsg(`找不到「${name}」在 ${cls} 的紀錄，請確認暱稱和時段是否正確`, 'error');
       return;
