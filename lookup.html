@@ -378,12 +378,8 @@ function renderProfile(s, dates) {
     else if (st === 'truant')     absent++;
     else if (st === 'prevmakeup') mkpPrev++;
   });
-  // 本季補課：從學生資料欄位算（跟 admin 一致）
-  const mkpThis = (s.currentMakeupSlots || []).filter(x => {
-    if (!x || !x.trim()) return false;
-    const n = normDate(String(x).trim());
-    return /^\d{4}\/\d{2}\/\d{2}$/.test(n) && parseInt(n.substring(0,4)) >= 2020;
-  }).length;
+  // 本季補課：掃所有日期的 makeup 記錄（不限於課表日期，補課通常在非課表日）
+  const mkpThis = Object.keys(att).filter(d => att[d] === 'makeup').length;
   const totalSessions = total + prevMkp;
   const usedAll = present + absent + mkpPrev + mkpThis;
   const remain  = totalSessions - usedAll;
