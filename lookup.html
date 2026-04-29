@@ -319,15 +319,24 @@ async function doSearch() {
       showMsg(`找不到「${name}」在 ${cls} 的紀錄，請確認暱稱和時段是否正確`, 'error');
       return;
     }
-    // Build attendance map keyed by [studentId][date]
+    // Build attendance map keyed by studentId AND name:class (fallback)
     const attRows = Array.isArray(attData) ? attData : (attData.records || attData.data || []);
     allAttendance = {};
     attRows.forEach(r => {
-      const sid = r.studentId || r.id;
-      if (!sid) return;
-      if (!allAttendance[sid]) allAttendance[sid] = {};
       const d = normDate(r.date);
-      if (d) allAttendance[sid][d] = (r.status || '').trim();
+      if (!d) return;
+      const status = (r.status || '').trim();
+      // Index by studentId
+      if (r.studentId) {
+        if (!allAttendance[r.studentId]) allAttendance[r.studentId] = {};
+        allAttendance[r.studentId][d] = status;
+      }
+      // Index by name:class as fallback
+      if (r.name && r.class) {
+        const nk = `${r.name}::${r.class}`;
+        if (!allAttendance[nk]) allAttendance[nk] = {};
+        allAttendance[nk][d] = status;
+      }
     });
     const classObj = classesData.find(c => c.name === cls);
     const dates    = (classObj ? (classObj.dates || []) : []).map(normDate).filter(Boolean);
@@ -343,7 +352,8 @@ async function doSearch() {
 
 function renderProfile(s, dates) {
   const sid    = s.id || s.studentId;
-  const att    = allAttendance[sid] || {};
+  const nameKey = `${s.name}::${s.class}`;
+  const att    = allAttendance[sid] || allAttendance[nameKey] || {};
   const today  = todayStr();
   const total  = Number(s.totalSessions) || 0;
   const prevMkp = Number(s.prevMakeup) || 0;
