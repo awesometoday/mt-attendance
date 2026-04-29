@@ -287,7 +287,7 @@ let classesData = [];
 let allAttendance = {};
 
 async function apiGet(params) {
-  const res = await fetch(API + '?' + new URLSearchParams(params));
+  const res = await fetch(API + '?' + new URLSearchParams({...params, _t: Date.now()}));
   return res.json();
 }
 
@@ -382,8 +382,22 @@ function renderProfile(s, dates) {
     else if (st === 'truant')     absent++;
     else if (st === 'prevmakeup') mkpPrev++;
   });
-  // 本季補課：掃所有日期的 makeup 記錄（不限於課表日期，補課通常在非課表日）
-  const mkpThis = Object.keys(att).filter(d => att[d] === 'makeup').length;
+  // 本季補課：掃所有出席記錄找 makeup（補課通常在非課表日，不能只看課表日期）
+  const mkpThis = (() => {
+    let count = 0;
+    // 從 allAttendance 直接掃，避免 att merge 遺漏
+    const sid2 = s.id || s.studentId;
+    const nk2 = 'name::' + String(s.name).trim().toLowerCase();
+    const allDates = new Set([
+      ...Object.keys(allAttendance[sid2] || {}),
+      ...Object.keys(allAttendance[nk2] || {})
+    ]);
+    allDates.forEach(d => {
+      const st = (allAttendance[sid2] || {})[d] || (allAttendance[nk2] || {})[d];
+      if (st === 'makeup') count++;
+    });
+    return count;
+  })();
   const totalSessions = total + prevMkp;
   const usedAll = present + absent + mkpPrev + mkpThis;
   const remain  = totalSessions - usedAll;
