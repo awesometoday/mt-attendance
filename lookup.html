@@ -368,24 +368,26 @@ function renderProfile(s, dates) {
   const prevDeadline = normDate(s.prevMakeupDeadline);
   const thisDeadline = normDate(s.makeupDeadline);
 
-  // ── calc stats ──
-  // 總堂數 = 購買 + 上季補課
-  // 扣除 = 出席 + 上季補課已用 + 缺課
-  // 剩餘 = 總堂數 − 扣除
-  let present = 0, leave = 0, absent = 0, mkpThis = 0, mkpPrev = 0;
+  // ── calc stats (aligned with admin logic) ──
+  let present = 0, leave = 0, absent = 0, mkpPrev = 0;
   dates.forEach(d => {
     if (d > today) return;
     const st = att[d];
     if      (st === 'present')    present++;
     else if (st === 'absent')     leave++;
     else if (st === 'truant')     absent++;
-    else if (st === 'makeup')     mkpThis++;
     else if (st === 'prevmakeup') mkpPrev++;
   });
-  const totalSessions = total + prevMkp;                      // 購買 + 上季補課額度
-  const usedAll = present + absent + mkpPrev + mkpThis;       // 出席 + 缺課 + 上季補課已用 + 本季補課
+  // 本季補課：從學生資料欄位算（跟 admin 一致）
+  const mkpThis = (s.currentMakeupSlots || []).filter(x => {
+    if (!x || !x.trim()) return false;
+    const n = normDate(String(x).trim());
+    return /^\d{4}\/\d{2}\/\d{2}$/.test(n) && parseInt(n.substring(0,4)) >= 2020;
+  }).length;
+  const totalSessions = total + prevMkp;
+  const usedAll = present + absent + mkpPrev + mkpThis;
   const remain  = totalSessions - usedAll;
-  const displayPresent = present + mkpPrev + mkpThis;         // 出席 + 上季補課 + 本季補課
+  const displayPresent = present + mkpPrev + mkpThis;
   const pendingLeave  = Math.max(0, leave - mkpThis);
   const prevOwed      = Math.max(0, prevMkp - mkpPrev);
   const pendingTotal  = prevOwed + pendingLeave;
