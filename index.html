@@ -465,8 +465,11 @@ async function saveDeadlines(sid){
   showToast('期限已儲存');
 }
 
-function renderAdmin(){
+async function renderAdmin(){
   const el=document.getElementById('classList');
+  // 確保資料已載入
+  if(!classes.length) await loadClasses();
+  if(!students.length) await loadStudents();
   if(!classes.length){el.innerHTML='<div class="empty">尚未建立班級</div>';return;}
   el.innerHTML=classes.map(c=>`<div class="srow">
     <div style="flex:1"><div style="font-size:14px;font-weight:500">${c.name}</div><div style="font-size:11px;color:var(--muted)">${c.dates.length} 堂・${c.dates[0]||'未設日期'} 起</div></div>
@@ -579,7 +582,7 @@ function switchTab(tab,btn){
   ['attend','lookup','admin'].forEach(t=>document.getElementById('tab-'+t).style.display=t===tab?'':'none');
   document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  if(tab==='admin')renderAdmin();
+  if(tab==='admin')renderAdmin().catch(console.error);
   if(tab==='attend'){loadAllAttendance().then(()=>{if(selectedClass)renderAttendTable();});}
 }
 function setSyncStatus(s,l){document.getElementById('syncDot').className='sync-dot '+s;document.getElementById('syncLabel').textContent=l;}
