@@ -391,15 +391,30 @@ async function showProfile(sid){
     <button onclick="saveCurrentMakeupSlots('${s.id}')" class="btn btn-green" style="font-size:13px;padding:6px 16px">儲存本季補課</button>
   </div>`;
 
+  // Build makeup queue from currentMakeupSlots
+  const mkpQueue=(s.currentMakeupSlots||[]).map(x=>{
+    if(!x||!x.trim()||x.trim()==='NA')return null;
+    const n=normalizeDate(x.trim());
+    return(/^\d{4}\/\d{2}\/\d{2}$/.test(n)&&parseInt(n)>=2020)?n:null;
+  }).filter(Boolean);
+
+  let mkpQIdx=0;
   const tlHTML=dates.map((d,i)=>{
     const st=(attendanceCache[d]||{})[s.id];
     const future=isFuture(d);
     const label=!st&&future?'－':st==='present'?'出席':st==='absent'?'請假':st==='truant'?'缺課':st==='prevmakeup'?'上季補課':'未登記';
     const badge=st==='present'?'background:#d4edda;color:#155724':st==='absent'?'background:#fff3cd;color:#856404':st==='truant'?'background:#f8d7da;color:#721c24':st==='prevmakeup'?'background:#dbeafe;color:#1e40af':'color:#bbb';
+    let mkpTag='';
+    if(st==='absent'&&!future){
+      const md=mkpQueue[mkpQIdx++];
+      mkpTag=md
+        ?`<span style="font-size:12px;font-weight:500;padding:2px 10px;border-radius:99px;background:#e8eaf6;color:#3949ab;margin-left:4px">補 ${fmt(md)} ✓</span>`
+        :`<span style="font-size:11px;color:#bbb;margin-left:4px">待補</span>`;
+    }
     return`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f5f5f5;${future?'opacity:0.4':''}">
       <span style="font-size:12px;color:#bbb;width:30px;flex-shrink:0">W${i+1}</span>
       <span style="font-size:14px;color:var(--muted);min-width:52px">${fmt(d)}</span>
-      <span style="font-size:13px;font-weight:500;padding:3px 12px;border-radius:99px;${badge}">${label}</span>
+      <span style="font-size:13px;font-weight:500;padding:3px 12px;border-radius:99px;${badge}">${label}</span>${mkpTag}
     </div>`;
   }).join('');
 
