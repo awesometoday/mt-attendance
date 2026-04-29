@@ -191,10 +191,12 @@ async function loadAllAttendance(){
   (d.records||[]).forEach(r=>{if(!attendanceCache[r.date])attendanceCache[r.date]={};attendanceCache[r.date][r.studentId]=r.status;});
 }
 
-function calc(s){
+function calc(s, classDates){
   let present=0,absent=0,truant=0,prevmakeup=0;
-  Object.values(attendanceCache).forEach(dr=>{
-    const st=dr[s.id];
+  // 只計算該班課表日期，避免補課等其他日期誤算
+  const datesArr = classDates || Object.keys(attendanceCache);
+  datesArr.forEach(d=>{
+    const st=(attendanceCache[d]||{})[s.id];
     if(st==='present')present++;
     else if(st==='absent')absent++;
     else if(st==='truant')truant++;
@@ -266,7 +268,7 @@ function renderAttendTable(){
   </tr></thead><tbody>`;
 
   cs.forEach(s=>{
-    const c=calc(s);
+    const c=calc(s, dates);
     const rc=c.remain===0?'rdanger':c.remain<=2?'rwarn':'rok';
     html+=`<tr>
       <td class="sc"><div class="sname">${s.emoji} ${s.name}</div><div class="smeta">購${s.totalSessions}堂</div></td>
@@ -338,9 +340,9 @@ async function showProfile(sid){
   // 確保 classes 已載入（切換分頁時可能還沒有）
   if(!classes.length) await loadClasses();
   await loadAllAttendance();
-  const c=calc(s);
   const co=classes.find(cl=>cl.name===s.class);
   const dates=co?co.dates:[];
+  const c=calc(s, dates); // 重新用班級日期計算
   const rc=c.remain===0?'#c0392b':c.remain<=2?'#e67e22':'#2d5a3d';
 
   const makeupSlots=(s.makeupSlots||[]).concat(['','','','','','','','','','']).slice(0,10).map(v=>v&&v.trim()==='NA'?'NA':(v&&/^\d{4}\/\d{2}\/\d{2}$/.test(String(v).trim())?String(v).trim():(v?normalizeDate(String(v)):''))||'');
@@ -477,7 +479,7 @@ function renderAdmin(){
   const sorted=[...students].sort((a,b)=>clsIdx(a.class)-clsIdx(b.class)||a.name.localeCompare(b.name,'zh'));
   let lastClass='';
   sl.innerHTML=sorted.map(s=>{
-    const c=calc(s);
+    const c=calc(s, dates);
     const rc=c.remain===0?'rdanger':c.remain<=2?'rwarn':'rok';
     let header='';
     if(s.class!==lastClass){
