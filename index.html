@@ -206,7 +206,8 @@ function calc(s){
   const currMadeup=(s.currentMakeupSlots||[]).filter(x=>{
     if(!x||!x.trim()||x.trim()==='NA')return false;
     const n=normalizeDate(x.trim());
-    return/^\d{4}\/\d{2}\/\d{2}$/.test(n);
+    if(!/^\d{4}\/\d{2}\/\d{2}$/.test(n))return false;
+    return parseInt(n)>=2020; // reject garbage years like 2001
   }).length;
   const used=present+truant+prevmakeup+currMadeup;
   const remain=Math.max(0,totalEff-used);
@@ -349,7 +350,8 @@ async function showProfile(sid){
     if(!v||!v.trim())return'';
     if(v.trim()==='NA')return'NA';
     const n=normalizeDate(v);
-    return/^\d{4}\/\d{2}\/\d{2}$/.test(n)?n:'';
+    if(!/^\d{4}\/\d{2}\/\d{2}$/.test(n))return'';
+    return parseInt(n)>=2020?n:''; // reject garbage years
   });
   const ss2='padding:16px;border-bottom:1px solid var(--border)';
   const stitle=(t)=>`<div style="font-size:14px;font-weight:700;color:var(--green);margin-bottom:12px">${t}</div>`;
@@ -376,7 +378,8 @@ async function showProfile(sid){
     if(!v||!v.trim())return'';
     if(v.trim()==='NA')return'NA';
     const n=normalizeDate(v);
-    return/^\d{4}\/\d{2}\/\d{2}$/.test(n)?n:'';
+    if(!/^\d{4}\/\d{2}\/\d{2}$/.test(n))return'';
+    return parseInt(n)>=2020?n:''; // reject garbage years
   });
   const currSection=`<div style="${ss2}">
     ${stitle('🗓 本季補課記錄')}
