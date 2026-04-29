@@ -203,7 +203,11 @@ function calc(s){
   const prev=s.prevMakeup||0;
   // 正確算法：總堂數=購買+上季補課額度，扣除=出席+缺課+上季補課已用+本季補課已用
   const totalEff=s.totalSessions+prev;
-  const currMadeup=(s.currentMakeupSlots||[]).filter(x=>x&&x.trim()&&x!=='NA').length;
+  const currMadeup=(s.currentMakeupSlots||[]).filter(x=>{
+    if(!x||!x.trim()||x.trim()==='NA')return false;
+    const n=normalizeDate(x.trim());
+    return/^\d{4}\/\d{2}\/\d{2}$/.test(n);
+  }).length;
   const used=present+truant+prevmakeup+currMadeup;
   const remain=Math.max(0,totalEff-used);
   const displayPresent=present+prevmakeup+currMadeup; // 出席+上季補課+本季補課
