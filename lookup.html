@@ -612,14 +612,12 @@ function shortDate(s) {
 
 function normDate(d) {
   if (!d) return '';
-  // Handle Date objects serialized as strings like "Wed Feb 26 2026 00:00:00 GMT+0800"
   const s = String(d).trim();
-  // Already in YYYY/MM/DD format
   if (/^\d{4}\/\d{2}\/\d{2}$/.test(s)) return s;
-  // Try parsing as a date and reformatting
   const parsed = new Date(s);
   if (!isNaN(parsed.getTime())) {
-    const y = parsed.getFullYear();
+    let y = parsed.getFullYear();
+    if (y < 2020) y = 2026;  // 短日期如 "3/7" 被瀏覽器猜錯年份 → 修正為 2026
     const m = String(parsed.getMonth() + 1).padStart(2, '0');
     const day = String(parsed.getDate()).padStart(2, '0');
     return `${y}/${m}/${day}`;
