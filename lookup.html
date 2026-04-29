@@ -308,27 +308,30 @@ async function doSearch() {
   btn.childNodes[0].textContent = '查詢中…';
   result.innerHTML = '';
   try {
-    // Step 1: find student in this class
-    const stuData  = await apiGet({ action: 'getStudents', class: cls });
+    // Fetch students + all attendance in parallel (same source as admin)
+    const [stuData, attData] = await Promise.all([
+      apiGet({ action: 'getStudents', class: cls }),
+      apiGet({ action: 'getAllAttendance' })
+    ]);
     const students = Array.isArray(stuData) ? stuData : (stuData.students || stuData.data || []);
     const student  = students.find(s => (s.name || '').trim().toLowerCase() === name.toLowerCase());
     if (!student) {
       showMsg(`找不到「${name}」在 ${cls} 的紀錄，請確認暱稱和時段是否正確`, 'error');
       return;
     }
-    // Step 2: fetch attendance for this student by ID
-    const sid     = student.id || student.studentId;
-    const attData = await apiGet({ action: 'getAttendance', studentId: sid });
+    // Build attendance map keyed by [studentId][date]
     const attRows = Array.isArray(attData) ? attData : (attData.records || attData.data || []);
     allAttendance = {};
-    allAttendance[sid] = {};
     attRows.forEach(r => {
+      const sid = r.studentId || r.id;
+      if (!sid) return;
+      if (!allAttendance[sid]) allAttendance[sid] = {};
       const d = normDate(r.date);
       if (d) allAttendance[sid][d] = (r.status || '').trim();
     });
     const classObj = classesData.find(c => c.name === cls);
     const dates    = (classObj ? (classObj.dates || []) : []).map(normDate).filter(Boolean);
-    renderProfile(student, dates, sid);
+    renderProfile(student, dates);
   } catch(e) {
     showMsg('查詢失敗，請稍後再試', 'error');
     console.error(e);
