@@ -353,7 +353,8 @@ async function doSearch() {
 function renderProfile(s, dates) {
   const sid    = s.id || s.studentId;
   const nameKey = `name::${s.name}`;
-  const att    = allAttendance[sid] || allAttendance[nameKey] || {};
+  // Merge both sources: ID-based + name-based, so partial matches don't block the other
+  const att = Object.assign({}, allAttendance[sid] || {}, allAttendance[nameKey] || {});
   const today  = todayStr();
   const total  = Number(s.totalSessions) || 0;
   const prevMkp = Number(s.prevMakeup) || 0;
