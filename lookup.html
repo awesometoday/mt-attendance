@@ -152,7 +152,7 @@ body::before {
 
 /* stats */
 .stats-row {
-  display: grid; grid-template-columns: repeat(5, 1fr);
+  display: grid; grid-template-columns: repeat(4, 1fr);
   border-bottom: 1px solid var(--border);
 }
 .stat { padding: 13px 4px; text-align: center; border-right: 1px solid var(--border); }
@@ -502,7 +502,6 @@ function renderProfile(s, dates) {
         <div class="stat"><div class="stat-val v-present">${displayPresent}</div><div class="stat-lbl">出席</div></div>
         <div class="stat"><div class="stat-val v-leave">${leave}</div><div class="stat-lbl">請假</div></div>
         <div class="stat"><div class="stat-val v-absent">${absent}</div><div class="stat-lbl">缺課</div></div>
-        <div class="stat"><div class="stat-val ${pkCls}">${pendingTotal}</div><div class="stat-lbl">待補課</div></div>
         <div class="stat"><div class="stat-val ${rcCls}">${remain}</div><div class="stat-lbl">剩餘堂數</div></div>
       </div>
 
@@ -522,9 +521,7 @@ function renderProfile(s, dates) {
             − 出席 <span>${displayPresent}</span> 次（含補課）
             − 缺課 <span>${absent}</span> 次
             = <span>${remain}</span> 堂<br>
-          待補課 = 上季欠補 <span>${prevOwed}</span> 堂
-            + 本季請假未補 <span>${pendingLeave}</span> 堂
-            = <span>${pendingTotal}</span> 堂
+
         </div>
         ${tlHTML || '<div class="msg">尚無紀錄</div>'}
       </div>
