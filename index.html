@@ -205,7 +205,11 @@ function calc(s, classDates){
   const prev=s.prevMakeup||0;
   // 正確算法：總堂數=購買+上季補課額度，扣除=出席+缺課+上季補課已用+本季補課已用
   const totalEff=s.totalSessions+prev;
-  const currMadeup=(s.currentMakeupSlots||[]).filter(x=>x&&/^\d{4}\/\d{2}\/\d{2}$/.test(String(x).trim())).length;
+  const currMadeup=(s.currentMakeupSlots||[]).filter(x=>{
+    if(!x||!x.trim())return false;
+    const n=normalizeDate(String(x).trim());
+    return/^\d{4}\/\d{2}\/\d{2}$/.test(n)&&parseInt(n.substring(0,4))>=2020;
+  }).length;
   const used=present+truant+prevmakeup+currMadeup;
   const remain=Math.max(0,totalEff-used);
   const displayPresent=present+prevmakeup+currMadeup; // 出席+上季補課+本季補課
@@ -221,9 +225,18 @@ function fmt(s){const p=s.split('/');return p.length===3?`${parseInt(p[1])}/${pa
 function isFuture(d){return d>todayStr();}
 function normalizeDate(str){
   if(!str)return'';
-  if(/^\d{4}\/\d{2}\/\d{2}$/.test(str))return str;
-  try{const d=new Date(str);if(!isNaN(d))return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;}catch(e){}
-  return str;
+  const s=String(str).trim();
+  if(/^\d{4}\/\d{2}\/\d{2}$/.test(s))return s;
+  try{
+    const d=new Date(s);
+    if(!isNaN(d)){
+      let y=d.getFullYear();
+      // Short dates like "3/7" get wrong year - correct to 2026
+      if(y<2020) y=2026;
+      return`${y}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+    }
+  }catch(e){}
+  return s;
 }
 
 function renderClassGrid(){
