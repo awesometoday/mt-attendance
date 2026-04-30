@@ -255,6 +255,7 @@ function selectClass(cid){selectedClass=cid;renderClassGrid();}
 
 function renderAttendTable(){
   const el=document.getElementById('attendTable');
+  try{
   const co=classes.find(c=>c.id===selectedClass);
   if(!co){el.innerHTML='';return;}
   const cs=students.filter(s=>s.class===co.name);
@@ -280,7 +281,8 @@ function renderAttendTable(){
   </tr></thead><tbody>`;
 
   cs.forEach(s=>{
-    const c=calc(s, dates);
+    let c;
+    try { c=calc(s, dates); } catch(err) { console.error('calc error for', s.name, err); c={present:0,absent:0,truant:0,remain:0,displayPresent:0,pendingMakeup:0}; }
     const rc=c.remain===0?'rdanger':c.remain<=2?'rwarn':'rok';
     html+=`<tr>
       <td class="sc"><div class="sname">${s.emoji} ${s.name}</div><div class="smeta">購${s.totalSessions}堂</div></td>
@@ -315,6 +317,7 @@ function renderAttendTable(){
   }).join('');
   html+='</tbody></table></div>';
   el.innerHTML=html;
+  } catch(err) { console.error('renderAttendTable error:', err); el.innerHTML='<div class="empty">載入失敗，請刷新頁面（'+err.message+'）</div>'; }
 }
 
 async function setCell(sid,name,cls,date,type){
