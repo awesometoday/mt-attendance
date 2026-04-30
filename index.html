@@ -280,11 +280,11 @@ function renderAttendTable(){
     <th style="min-width:40px">剩餘</th>
   </tr></thead><tbody>`;
 
-  cs.forEach(s=>{
+  html+=cs.map(s=>{
     let c;
     try { c=calc(s, dates); } catch(err) { console.error('calc error for', s.name, err); c={present:0,absent:0,truant:0,remain:0,displayPresent:0,pendingMakeup:0}; }
     const rc=c.remain===0?'rdanger':c.remain<=2?'rwarn':'rok';
-    html+=`<tr>
+    return`<tr>
       <td class="sc"><div class="sname">${s.emoji} ${s.name}</div><div class="smeta">購${s.totalSessions}堂</div></td>
       ${dates.map(d=>{
         const st=(attendanceCache[d]||{})[s.id]||'none';
