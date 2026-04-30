@@ -613,16 +613,23 @@ function shortDate(s) {
 function normDate(d) {
   if (!d) return '';
   const s = String(d).trim();
+  // YYYY/MM/DD → 直接回傳
   if (/^\d{4}\/\d{2}\/\d{2}$/.test(s)) return s;
+  // M/D 或 MM/DD → 補 2026 年
+  if (/^\d{1,2}\/\d{1,2}$/.test(s)) {
+    const p = s.split('/');
+    return `2026/${p[0].padStart(2,'0')}/${p[1].padStart(2,'0')}`;
+  }
+  // 其他格式（Fri Apr 10、Date物件字串等）→ 嘗試解析，但只接受年份>=2020
   const parsed = new Date(s);
   if (!isNaN(parsed.getTime())) {
-    let y = parsed.getFullYear();
-    if (y < 2020) y = 2026;  // 短日期如 "3/7" 被瀏覽器猜錯年份 → 修正為 2026
+    const y = parsed.getFullYear();
+    if (y < 2020) return ''; // 拒絕垃圾年份
     const m = String(parsed.getMonth() + 1).padStart(2, '0');
     const day = String(parsed.getDate()).padStart(2, '0');
     return `${y}/${m}/${day}`;
   }
-  return s;
+  return '';
 }
 
 function isEmoji(s) {
