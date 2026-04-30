@@ -259,7 +259,7 @@ function renderAttendTable(){
   const co=classes.find(c=>c.id===selectedClass);
   if(!co){el.innerHTML='';return;}
   const cs=students.filter(s=>s.class===co.name);
-  const dates=co.dates;
+  const dates=Array.isArray(co.dates)?co.dates:(co.dates?String(co.dates).split(',').map(d=>d.trim()).filter(Boolean):[]);
   const today=todayStr();
   if(!cs.length){el.innerHTML='<div class="empty" style="background:white;border-radius:12px;border:1px solid var(--border);padding:30px">這個班級還沒有學生</div>';return;}
 
