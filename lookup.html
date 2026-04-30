@@ -342,9 +342,9 @@ async function doSearch() {
         if (!allAttendance[r.studentId]) allAttendance[r.studentId] = {};
         allAttendance[r.studentId][d] = status;
       }
-      // Index by normalized name as fallback
-      if (r.name) {
-        const nk = 'name::' + String(r.name).trim().toLowerCase();
+      // Index by name+class for precise matching
+      if (r.name && r.class) {
+        const nk = 'nc::' + String(r.name).trim().toLowerCase() + '::' + String(r.class).trim();
         if (!allAttendance[nk]) allAttendance[nk] = {};
         allAttendance[nk][d] = status;
       }
@@ -368,8 +368,8 @@ async function doSearch() {
 
 function renderProfile(s, dates) {
   const sid    = s.id || s.studentId;
-  const nameKey = 'name::' + String(s.name).trim().toLowerCase();
-  // Merge both sources: ID-based + name-based, so partial matches don't block the other
+  const nameKey = 'nc::' + String(s.name).trim().toLowerCase() + '::' + String(s.class).trim();
+  // Merge ID-based + name+class-based (scoped to same class, no cross-class pollution)
   const att = Object.assign({}, allAttendance[sid] || {}, allAttendance[nameKey] || {});
   const today  = todayStr();
   const total  = Number(s.totalSessions) || 0;
