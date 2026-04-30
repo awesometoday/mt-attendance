@@ -356,7 +356,19 @@ async function showProfile(sid){
   const c=calc(s, dates); // 重新用班級日期計算
   const rc=c.remain===0?'#c0392b':c.remain<=2?'#e67e22':'#2d5a3d';
 
-  const makeupSlots=(s.makeupSlots||[]).concat(['','','','','','','','','','']).slice(0,10).map(v=>v&&v.trim()==='NA'?'NA':(v&&/^\d{4}\/\d{2}\/\d{2}$/.test(String(v).trim())?String(v).trim():(v?normalizeDate(String(v)):''))||'');
+  const prevMkpCount = s.prevMakeup || 0;
+  const makeupSlots=(s.makeupSlots||[]).concat(['','','','','','','','','','']).slice(0,10).map((v,idx)=>{
+    if(idx >= prevMkpCount) return ''; // 超過欠補堂數的槽位一律清空
+    if(!v||!String(v).trim())return'';
+    const s2=String(v).trim();
+    if(s2==='NA')return'NA';
+    if(/^\d{4}\/\d{2}\/\d{2}$/.test(s2))return s2;
+    if(/^\d{1,2}\/\d{1,2}$/.test(s2)){
+      const p=s2.split('/');
+      return`2026/${p[0].padStart(2,'0')}/${p[1].padStart(2,'0')}`;
+    }
+    return'';
+  });
   const ss2='padding:16px;border-bottom:1px solid var(--border)';
   const stitle=(t)=>`<div style="font-size:14px;font-weight:700;color:var(--green);margin-bottom:12px">${t}</div>`;
 
@@ -378,7 +390,17 @@ async function showProfile(sid){
     <button onclick="saveMakeupSlots('${s.id}')" class="btn btn-green" style="font-size:13px;padding:6px 16px">儲存上季補課</button>
   </div>`;
 
-  const currSlots=(s.currentMakeupSlots||[]).concat(['','','','','','','','','','']).slice(0,10).map(v=>v&&v.trim()==='NA'?'NA':(v&&/^\d{4}\/\d{2}\/\d{2}$/.test(String(v).trim())?String(v).trim():(v?normalizeDate(String(v)):''))||'');
+  const currSlots=(s.currentMakeupSlots||[]).concat(['','','','','','','','','','']).slice(0,10).map(v=>{
+    if(!v||!String(v).trim())return'';
+    const s2=String(v).trim();
+    if(s2==='NA')return'NA';
+    if(/^\d{4}\/\d{2}\/\d{2}$/.test(s2))return s2;
+    if(/^\d{1,2}\/\d{1,2}$/.test(s2)){
+      const p=s2.split('/');
+      return`2026/${p[0].padStart(2,'0')}/${p[1].padStart(2,'0')}`;
+    }
+    return'';
+  });
   const currSection=`<div style="${ss2}">
     ${stitle('🗓 本季補課記錄')}
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
