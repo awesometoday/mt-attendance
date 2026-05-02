@@ -113,6 +113,7 @@ const SCRIPT_URL='https://script.google.com/macros/s/AKfycbwTl_pEaFQb-0UuATusXi_
       <span class="legend-item"><span class="cb absent" style="pointer-events:none">假</span>請假（不扣堂，可補）</span>
       <span class="legend-item"><span class="cb truant" style="pointer-events:none">缺</span>缺課（扣1堂）</span>
       <span class="legend-item"><span class="cb" style="pointer-events:none;border-color:#2980b9;background:#2980b933;color:#2980b9">補</span>上季補課（不扣本季）</span>
+      <span class="legend-item"><span class="cb" style="pointer-events:none;border-color:#8e44ad;background:#8e44ad33;color:#8e44ad">臨</span>臨時假（每季限1次，不扣堂）</span>
     </div>
     <div id="classGrid" class="class-grid"></div>
     <div id="attendTable"></div>
@@ -192,7 +193,7 @@ async function loadAllAttendance(){
 }
 
 function calc(s, classDates){
-  let present=0,absent=0,truant=0,prevmakeup=0;
+  let present=0,absent=0,truant=0,prevmakeup=0,emergency=0;
   // 只計算該班課表日期，避免補課等其他日期誤算
   const datesArr = classDates || Object.keys(attendanceCache);
   datesArr.forEach(d=>{
@@ -201,6 +202,7 @@ function calc(s, classDates){
     else if(st==='absent')absent++;
     else if(st==='truant')truant++;
     else if(st==='prevmakeup')prevmakeup++;
+    else if(st==='emergency')emergency++;
   });
   const prev=s.prevMakeup||0;
   // 正確算法：總堂數=購買+上季補課額度，扣除=出席+缺課+上季補課已用+本季補課已用
@@ -217,7 +219,7 @@ function calc(s, classDates){
   const currPending=Math.max(0,absent-currMadeup);
   const pendingMakeup=prevPending+currPending;
   const prevMadeup=prevmakeup;
-  return{present,absent,truant,prevmakeup,prevMadeup,currMadeup,prevPending,currPending,pendingMakeup,used,remain,displayPresent};
+  return{present,absent,truant,prevmakeup,emergency,prevMadeup,currMadeup,prevPending,currPending,pendingMakeup,used,remain,displayPresent};
 }
 
 function todayStr(){const d=new Date();return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;}
@@ -272,6 +274,7 @@ function renderAttendTable(){
         <span style="width:26px;text-align:center">假</span>
         <span style="width:26px;text-align:center">缺</span>
         <span style="width:26px;text-align:center">補</span>
+        <span style="width:26px;text-align:center">臨</span>
       </div>
     </th>`).join('')}
     <th style="min-width:36px">出席</th>
@@ -306,6 +309,7 @@ function renderAttendTable(){
             ${btn('absent','#b8860b')}
             ${btn('truant','#c0392b')}
             ${btn('prevmakeup','#2980b9')}
+            ${btn('emergency','#8e44ad')}
           </div>
         </td>`;
       }).join('')}
@@ -427,8 +431,8 @@ async function showProfile(sid){
   const tlHTML=dates.map((d,i)=>{
     const st=(attendanceCache[d]||{})[s.id];
     const future=isFuture(d);
-    const label=!st&&future?'－':st==='present'?'出席':st==='absent'?'請假':st==='truant'?'缺課':st==='prevmakeup'?'上季補課':'未登記';
-    const badge=st==='present'?'background:#d4edda;color:#155724':st==='absent'?'background:#fff3cd;color:#856404':st==='truant'?'background:#f8d7da;color:#721c24':st==='prevmakeup'?'background:#dbeafe;color:#1e40af':'color:#bbb';
+    const label=!st&&future?'－':st==='present'?'出席':st==='absent'?'請假':st==='truant'?'缺課':st==='prevmakeup'?'上季補課':st==='emergency'?'臨時假':'未登記';
+    const badge=st==='present'?'background:#d4edda;color:#155724':st==='absent'?'background:#fff3cd;color:#856404':st==='truant'?'background:#f8d7da;color:#721c24':st==='prevmakeup'?'background:#dbeafe;color:#1e40af':st==='emergency'?'background:#f3e5f5;color:#8e44ad':'color:#bbb';
     let mkpTag='';
     if(st==='absent'&&!future){
       const md=mkpQueue[mkpQIdx++];
@@ -469,6 +473,7 @@ async function showProfile(sid){
     <div class="pstats">
       <div class="pstat"><div class="pstat-val" style="color:#2d5a3d;font-size:24px">${c.displayPresent}</div><div class="pstat-lbl" style="font-size:12px">出席</div></div>
       <div class="pstat"><div class="pstat-val" style="color:#856404;font-size:24px">${c.absent}</div><div class="pstat-lbl" style="font-size:12px">請假</div></div>
+      <div class="pstat"><div class="pstat-val" style="color:#8e44ad;font-size:24px">${c.emergency}</div><div class="pstat-lbl" style="font-size:12px">臨時假</div></div>
       <div class="pstat"><div class="pstat-val" style="color:#c0392b;font-size:24px">${c.truant}</div><div class="pstat-lbl" style="font-size:12px">缺課</div></div>
       <div class="pstat"><div class="pstat-val" style="color:${rc};font-size:24px">${c.remain}</div><div class="pstat-lbl" style="font-size:12px">剩餘堂數</div></div>
     </div>
