@@ -474,14 +474,21 @@ function renderProfile(s, dates) {
     emergency:  ['臨時假',  'b-emergency'],
     none:       ['未登記',  'b-none'],
   };
-  // Build ordered list of valid makeup dates from currentMakeupSlots
-  const makeupQueue = rawCurrSlots.map(x => {
+  // Build makeup queues: 上季補課 first, then 本季補課
+  const mkpQueuePrev = (s.makeupSlots || []).slice(0, prevMkp).map(x => {
     if (!x || !String(x).trim() || String(x).trim() === 'NA') return null;
     const n = normDate(String(x).trim());
-    return (/^\d{4}\/\d{2}\/\d{2}$/.test(n) && parseInt(n.substring(0,4)) >= 2020) ? n : null;
+    return (n && parseInt(n.substring(0,4)) >= 2020) ? n : null;
   }).filter(Boolean);
 
-  let mkpIdx = 0; // pointer into makeupQueue per absence
+  const mkpQueueCurr = rawCurrSlots.map(x => {
+    if (!x || !String(x).trim() || String(x).trim() === 'NA') return null;
+    const n = normDate(String(x).trim());
+    return (n && parseInt(n.substring(0,4)) >= 2020) ? n : null;
+  }).filter(Boolean);
+
+  const makeupQueue = [...mkpQueuePrev, ...mkpQueueCurr];
+  let mkpIdx = 0;
   const tlHTML = dates.map((d, i) => {
     const isFuture = d > today;
     const st = att[d];
