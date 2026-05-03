@@ -439,8 +439,8 @@ async function showProfile(sid){
     return(/^\d{4}\/\d{2}\/\d{2}$/.test(n)&&parseInt(n)>=2020)?n:null;
   }).filter(Boolean);
 
-  // 合併：上季補課先用，再本季補課
-  const mkpQueueAll=[...mkpQueuePrev,...mkpQueueCurr];
+  // 時間軸只顯示本季補課（上季補課已在上方區塊單獨呈現）
+  const mkpQueueAll=[...mkpQueueCurr];
   let mkpQIdx=0;
 
   const tlHTML=dates.map((d,i)=>{
