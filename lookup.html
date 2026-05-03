@@ -493,7 +493,8 @@ function renderProfile(s, dates) {
     return (n && parseInt(n.substring(0,4)) >= 2020) ? n : null;
   }).filter(Boolean);
 
-  const makeupQueue = [...mkpQueuePrev, ...mkpQueueCurr];
+  // 時間軸只顯示本季補課（上季補課已在上方區塊單獨呈現）
+  const makeupQueue = [...mkpQueueCurr];
   let mkpIdx = 0;
   const tlHTML = dates.map((d, i) => {
     const isFuture = d > today;
