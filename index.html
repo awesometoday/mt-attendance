@@ -488,7 +488,7 @@ async function showProfile(sid){
 }
 
 async function saveMakeupSlots(sid){
-  const slots=[0,1,2,3,4,5,6,7,8,9].map(i=>document.getElementById('pf-slot-'+i).value.trim());
+  const slots=[0,1,2,3,4,5,6,7,8,9].map(i=>normalizeSlot(document.getElementById('pf-slot-'+i).value.trim()));
   const prevDeadline=document.getElementById('pf-prevdeadline').value.trim();
   await apiGet({action:'editStudent',studentId:sid,makeupSlots:slots.join('|'),prevMakeupDeadline:prevDeadline});
   const s=students.find(x=>x.id===sid);
@@ -497,11 +497,28 @@ async function saveMakeupSlots(sid){
 }
 
 async function saveCurrentMakeupSlots(sid){
-  const slots=[0,1,2,3,4,5,6,7,8,9].map(i=>document.getElementById('pf-curr-'+i).value.trim());
+  const slots=[0,1,2,3,4,5,6,7,8,9].map(i=>normalizeSlot(document.getElementById('pf-curr-'+i).value.trim()));
   await apiGet({action:'editStudent',studentId:sid,currentMakeupSlots:slots.join('|')});
   const s=students.find(x=>x.id===sid);
   if(s)s.currentMakeupSlots=slots;
   showToast('本季補課記錄已儲存');
+}
+
+// 把輸入的日期統一轉成 YYYY/MM/DD 格式再存
+function normalizeSlot(v){
+  if(!v||v==='NA')return v||'';
+  if(/^\d{4}\/\d{2}\/\d{2}$/.test(v))return v;
+  if(/^\d{1,2}\/\d{1,2}$/.test(v)){
+    const p=v.split('/');
+    return`2026/${p[0].padStart(2,'0')}/${p[1].padStart(2,'0')}`;
+  }
+  const d=new Date(v);
+  if(!isNaN(d)){
+    let y=d.getFullYear();
+    if(y<2020)y=2026;
+    return`${y}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+  }
+  return v;
 }
 
 async function saveNotes(sid){
