@@ -399,12 +399,18 @@ function renderProfile(s, dates) {
     const n = normDate(String(x).trim());
     return /^\d{4}\/\d{2}\/\d{2}$/.test(n) && parseInt(n.substring(0,4)) >= 2020;
   }).length;
+  // 上季補課已用：從 makeupSlots 欄位數有效日期
+  const prevMkpUsed = (s.makeupSlots || []).slice(0, prevMkp).filter(x => {
+    if (!x || !String(x).trim() || String(x).trim() === 'NA') return false;
+    const n = normDate(String(x).trim());
+    return n && n.length === 10 && parseInt(n.substring(0,4)) >= 2020;
+  }).length;
   const totalSessions = total + prevMkp;
-  const usedAll = present + absent + mkpPrev + mkpThis;
+  const usedAll = present + absent + prevMkpUsed + mkpThis;
   const remain  = totalSessions - usedAll;
-  const displayPresent = present + mkpPrev + mkpThis;
+  const displayPresent = present + prevMkpUsed + mkpThis;
   const pendingLeave  = Math.max(0, leave - mkpThis);
-  const prevOwed      = Math.max(0, prevMkp - mkpPrev);
+  const prevOwed      = Math.max(0, prevMkp - prevMkpUsed);
   const pendingTotal  = prevOwed + pendingLeave;
 
   const rcCls = remain <= 0 ? 'v-danger' : remain <= 2 ? 'v-warn' : 'v-remain';
