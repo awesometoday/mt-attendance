@@ -326,6 +326,9 @@ async function doSearch() {
     const student = students.find(s =>
       (s.name || '').trim().toLowerCase() === name.toLowerCase() &&
       (s.class || '').trim() === cls.trim()
+    ) || students.find(s =>
+      (s.name || '').trim().toLowerCase().includes(name.toLowerCase()) &&
+      (s.class || '').trim() === cls.trim()
     );
     if (!student) {
       showMsg(`找不到「${name}」在 ${cls} 的紀錄，請確認暱稱和時段是否正確`, 'error');
