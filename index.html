@@ -212,10 +212,16 @@ function calc(s, classDates){
     const n=normalizeDate(String(x).trim());
     return/^\d{4}\/\d{2}\/\d{2}$/.test(n)&&parseInt(n.substring(0,4))>=2020;
   }).length;
-  const used=present+truant+prevmakeup+currMadeup;
+  // 上季補課已用：從 makeupSlots 欄位數有效日期（比出席狀態更可靠）
+  const prevMkpUsed=(s.makeupSlots||[]).slice(0,prev).filter(x=>{
+    if(!x||!x.trim()||x.trim()==='NA')return false;
+    const n=normalizeDate(String(x).trim());
+    return/^\d{4}\/\d{2}\/\d{2}$/.test(n)&&parseInt(n.substring(0,4))>=2020;
+  }).length;
+  const used=present+truant+prevMkpUsed+currMadeup;
   const remain=Math.max(0,totalEff-used);
-  const displayPresent=present+prevmakeup+currMadeup; // 出席+上季補課+本季補課
-  const prevPending=Math.max(0,prev-prevmakeup);
+  const displayPresent=present+prevMkpUsed+currMadeup; // 出席+上季補課已用+本季補課
+  const prevPending=Math.max(0,prev-prevMkpUsed);
   const currPending=Math.max(0,absent-currMadeup);
   const pendingMakeup=prevPending+currPending;
   const prevMadeup=prevmakeup;
