@@ -437,7 +437,10 @@ function renderProfile(s, dates) {
     const MAX_SLOTS = Math.max(prevMkp, prevSlots.length, 1);
     const slotsHTML = Array.from({ length: MAX_SLOTS }, (_, i) => {
       const d = prevSlots[i];
-      const raw = d ? shortDate(d) : '';
+      // 先 normalize，只接受 2020 年以後的有效日期
+      const normalized = d ? normDate(String(d).trim()) : '';
+      const valid = normalized && /^\d{4}\/\d{2}\/\d{2}$/.test(normalized) && parseInt(normalized.substring(0,4)) >= 2020;
+      const raw = valid ? shortDate(normalized) : '';
       const display = raw || '日期';
       const cls2 = raw ? '' : 'empty';
       return `<div class="makeup-slot">
